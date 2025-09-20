@@ -1,3 +1,15 @@
+# Ignore Terraform local state files
+*.tfstate
+*.tfstate.*
+
+# Ignore Terraform cache directories
+.terraform/
+
+# Ignore lock files (optional, can be committed if desired)
+.terraform.lock.hcl
+
+# Ignore local variable files (may contain secrets)
+*.tfvars
 # OS files
 .DS_Store
 Thumbs.db

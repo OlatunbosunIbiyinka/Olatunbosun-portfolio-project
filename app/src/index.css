@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply bg-navy text-white font-sans antialiased;
+    background: linear-gradient(135deg, #0A2540 0%, #0F1419 50%, #0A2540 100%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-gradient-to-r from-cyan to-purple text-white font-semibold py-3 px-6 sm:px-8 rounded-lg hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-cyan/25 text-sm sm:text-base;
+  }
+  
+  .btn-secondary {
+    @apply border-2 border-cyan text-cyan font-semibold py-3 px-6 sm:px-8 rounded-lg hover:bg-cyan hover:text-navy transition-all duration-300 text-sm sm:text-base;
+  }
+  
+  .card {
+    @apply bg-card-gradient border border-cyan/20 rounded-xl p-4 sm:p-6 hover:border-cyan/40 transition-all duration-300 backdrop-blur-sm;
+  }
+  
+  .badge {
+    @apply bg-gradient-to-r from-cyan/20 to-purple/20 border border-cyan/30 text-cyan px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium;
+  }
+  
+  .section-padding {
+    @apply py-12 sm:py-16 lg:py-20 px-4 sm:px-6 lg:px-8;
+  }
+  
+  .container {
+    @apply max-w-7xl mx-auto;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-cyan to-purple bg-clip-text text-transparent;
+  }
+  
+  /* Mobile-first responsive text sizing */
+  .hero-title {
+    @apply text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black leading-tight;
+  }
+  
+  .section-title {
+    @apply text-3xl sm:text-4xl lg:text-5xl font-bold;
+  }
+  
+  .card-title {
+    @apply text-xl sm:text-2xl font-bold;
+  }
+  
+  /* Animation classes */
+  .fade-in-up {
+    @apply opacity-0 translate-y-8 transition-all duration-700 ease-out;
+  }
+  
+  .fade-in-up.animate {
+    @apply opacity-100 translate-y-0;
+  }
+}

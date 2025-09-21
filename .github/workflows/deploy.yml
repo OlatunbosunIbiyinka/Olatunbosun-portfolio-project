@@ -1,0 +1,54 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Azure login
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Step 3: ACR login
+      - name: ACR Login
+        run: az acr login --name olaacr01  
+
+      # Step 4: Build & push Docker image
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_NAME=ola-portfolio-app
+          ACR_NAME=olaacr01
+          TAG=${{ github.sha }}
+          
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG ./app
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG
+          
+          echo "IMAGE=$ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG" >> $GITHUB_ENV
+
+      # Step 5: Get AKS credentials
+      - name: Get AKS Credentials
+        run: az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
+
+      # Step 6: Deploy to AKS
+      - name: Deploy to AKS
+        run: |
+          sed -i "s|IMAGE_PLACEHOLDER|${{ env.IMAGE }}|g" k8s/deployment.yaml
+          kubectl apply -f k8s/
+
+      # Step 7: Wait for rollout & rollback on failure
+      - name: Verify deployment
+        run: |
+          set -e
+          kubectl rollout status deployment/portfolio-app --timeout=3m || kubectl rollout undo deployment/portfolio-app

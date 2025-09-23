@@ -1,0 +1,29 @@
+# Enable Alertmanager
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+
+# Additional Prometheus alert rules
+additionalPrometheusRules:
+  - name: portfolio-app-alerts
+    groups:
+      - name: portfolio-app-alerts
+        rules:
+          - alert: HighCpuUsage
+            expr: sum(rate(container_cpu_usage_seconds_total{pod=~"ola-portfolio-app.*"}[2m])) > 0.8
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU usage on portfolio-app pod"
+              description: "Pod {{ $labels.pod }} CPU usage is above 80%"
+
+          - alert: PodRestartHigh
+            expr: increase(kube_pod_container_status_restarts_total{pod=~"ola-portfolio-app.*"}[5m]) > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Portfolio app pod restarting"
+              description: "Pod {{ $labels.pod }} has restarted more than once in the last 5 minutes"

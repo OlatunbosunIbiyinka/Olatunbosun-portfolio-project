@@ -1,13 +1,14 @@
-name: CI/CD Pipeline
+name: CD - Deploy to AKS
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["CI - Code Quality & Security"]
+    types:
+      - completed
 
 jobs:
   build-and-deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -23,7 +24,7 @@ jobs:
 
       # Step 3: ACR login
       - name: ACR Login
-        run: az acr login --name olaacr01  
+        run: az acr login --name olaacr01
 
       # Step 4: Build & push Docker image
       - name: Build and Push Docker Image
@@ -44,10 +45,10 @@ jobs:
       # Step 6: Deploy to AKS
       - name: Deploy to AKS
         run: |
-          sed -i "s|IMAGE_PLACEHOLDER|${{ env.IMAGE }}|g" k8s/deployment.yaml
-          kubectl apply -f k8s/
+          kubectl set image deployment/portfolio-app portfolio-app=${{ env.IMAGE }} --record
+          kubectl rollout status deployment/portfolio-app --timeout=3m
 
-      # Step 7: Wait for rollout & rollback on failure
+      # Step 7: Verify rollout with rollback
       - name: Verify deployment
         run: |
           set -e

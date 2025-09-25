@@ -41,3 +41,7 @@ app/node_modules/
 app/dist/
 app/__pycache__/
 app/*.env
+
+# Helm binaries
+helm-v*.zip
+windows-amd64/

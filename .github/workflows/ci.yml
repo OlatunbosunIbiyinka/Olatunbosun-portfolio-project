@@ -38,6 +38,7 @@ jobs:
           args: >
             -Dsonar.organization=OlatunbosunIbiyinka
             -Dsonar.projectKey=olatunbosunibiyinka2025
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 

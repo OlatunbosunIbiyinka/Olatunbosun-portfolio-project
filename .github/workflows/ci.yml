@@ -36,8 +36,8 @@ jobs:
         with:
           projectBaseDir: ./app
           args: >
-            -Dsonar.organization=${{ secrets.SONAR_ORG }}
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=OlatunbosunIbiyinka
+            -Dsonar.projectKey=olatunbosunibiyinka2025
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 

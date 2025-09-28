@@ -1,5 +1,5 @@
 cat > README.md <<'EOF'
-# DevOps Portfolio Project
+# DevOps Portfolio Project for Olatunbosun Ibiyinka
 
 This repository contains a hands-on DevOps project designed to showcase end-to-end skills across infrastructure, automation, monitoring, and security.
 

@@ -69,7 +69,7 @@ The site is designed to be deployed on any static hosting platform:
 - Safari (latest)
 - Edge (latest)
 
-## 🔧 Customization
+## 🔧Customization
 
 1. **Update Content**: Modify the content in each component file
 2. **Change Colors**: Update the color scheme in `tailwind.config.js`

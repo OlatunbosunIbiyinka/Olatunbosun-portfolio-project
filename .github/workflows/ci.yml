@@ -36,7 +36,7 @@ jobs:
         with:
           projectBaseDir: ./app
           args: >
-            -Dsonar.organization=OlatunbosunIbiyinka
+            -Dsonar.organization=olatunbosunibiyinka
             -Dsonar.projectKey=OlatunbosunIbiyinka_Olatunbosun-portfolio-project
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
         env:

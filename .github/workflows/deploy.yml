@@ -2,7 +2,7 @@ name: CD - Deploy to AKS
 
 on:
   workflow_run:
-    workflows: ["CI - Code Quality & Security"]
+    workflows: ["Security Scans"]
     types:
       - completed
 
@@ -12,21 +12,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repo
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Azure login
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # Step 3: ACR login
       - name: ACR Login
         run: az acr login --name olaacr01
 
-      # Step 4: Build & push Docker image
       - name: Build and Push Docker Image
         run: |
           IMAGE_NAME=ola-portfolio-app
@@ -38,17 +34,14 @@ jobs:
           
           echo "IMAGE=$ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG" >> $GITHUB_ENV
 
-      # Step 5: Get AKS credentials
       - name: Get AKS Credentials
         run: az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
 
-      # Step 6: Deploy to AKS
       - name: Deploy to AKS
         run: |
           kubectl set image deployment/portfolio-app portfolio-app=${{ env.IMAGE }} --record
           kubectl rollout status deployment/portfolio-app --timeout=3m
 
-      # Step 7: Verify rollout with rollback
       - name: Verify deployment
         run: |
           set -e

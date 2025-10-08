@@ -65,6 +65,13 @@ jobs:
       - name: Push Docker image to ACR
         run: docker push olaacr01.azurecr.io/ola-portfolio-app:latest
 
+      - name: Log in to Azure Container Registry for Trivy
+        uses: azure/docker-login@v1
+        with:
+          login-server: olaacr01.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}  
+
       # Step 8: Run Trivy vulnerability scanner on 'latest'
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -74,4 +81,3 @@ jobs:
           exit-code: "0"
           ignore-unfixed: true
 
-          

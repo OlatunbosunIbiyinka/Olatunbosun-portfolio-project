@@ -1,0 +1,33 @@
+name: Security Scans
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: ./app
+          args: >
+            -Dsonar.organization=olatunbosunibiyinka
+            -Dsonar.projectKey=OlatunbosunIbiyinka_Olatunbosun-portfolio-project
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "olaacr01.azurecr.io/ola-portfolio-app:latest"
+          format: "table"
+          exit-code: "0"
+          ignore-unfixed: true

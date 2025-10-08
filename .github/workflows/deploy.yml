@@ -2,12 +2,12 @@ name: CD - Deploy to AKS
 
 on:
   workflow_run:
-    workflows: ["Security Scans"]
+    workflows: ["CI Pipeline"]
     types:
       - completed
 
 jobs:
-  build-and-deploy:
+  deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
@@ -15,34 +15,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Azure login
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # ACR login
       - name: ACR Login
         run: az acr login --name olaacr01
 
-      - name: Build and Push Docker Image
-        run: |
-          IMAGE_NAME=ola-portfolio-app
-          ACR_NAME=olaacr01
-          TAG=${{ github.sha }}
-          
-          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG ./app
-          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG
-          
-          echo "IMAGE=$ACR_NAME.azurecr.io/$IMAGE_NAME:$TAG" >> $GITHUB_ENV
-
-      - name: Get AKS Credentials
-        run: az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
-
+      # Deploy updated image to AKS
       - name: Deploy to AKS
         run: |
-          kubectl set image deployment/portfolio-app portfolio-app=${{ env.IMAGE }} --record
+          IMAGE=olaacr01.azurecr.io/ola-portfolio-app:latest
+          az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
+          kubectl set image deployment/portfolio-app portfolio-app=$IMAGE --record
           kubectl rollout status deployment/portfolio-app --timeout=3m
-
-      - name: Verify deployment
-        run: |
-          set -e
-          kubectl rollout status deployment/portfolio-app --timeout=3m || kubectl rollout undo deployment/portfolio-app

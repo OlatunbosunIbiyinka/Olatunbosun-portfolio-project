@@ -24,6 +24,14 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+      # 🔑 Log in to Azure Container Registry
+      - name: Log in to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: olaacr01.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:

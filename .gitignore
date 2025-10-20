@@ -45,3 +45,5 @@ app/*.env
 # Helm binaries
 helm-v*.zip
 windows-amd64/
+
+monitoring-setup/alertmanager-template.yaml

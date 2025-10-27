@@ -54,3 +54,44 @@ This project now includes Terraform code to provision:
 2. Plan deployment: `terraform plan -var-file=terraform.tfvars`
 3. Apply deployment: `terraform apply -var-file=terraform.tfvars`
 4. View outputs: `terraform output`
+
+🧰 Tech Stack
+Category	Tools / Technologies
+Cloud	Microsoft Azure
+Infrastructure as Code	Terraform
+Containerization	Docker
+Orchestration	Kubernetes (AKS)
+CI/CD	GitHub Actions
+Monitoring	Prometheus, Grafana
+Security	SonarCloud, Trivy
+Registry	Azure Container Registry (ACR)
+
+📈 Monitoring & Observability
+
+Prometheus collects metrics from the AKS cluster and application pods.
+
+Grafana visualizes metrics using custom dashboards for performance and health insights.
+
+Alerts can be configured to trigger on key metrics (CPU, memory, error rate, etc.).
+
+🔒 Security Integration
+
+SonarCloud analyzes code quality and detects vulnerabilities.
+
+Trivy scans Docker images for known CVEs and misconfigurations.
+
+GitHub Action workflows enforce quality gates and security checks before deployment.
+
+🧠 Lessons Learned
+
+Automated infrastructure provisioning improves repeatability and scalability.
+
+CI/CD integration ensures fast, reliable deployments.
+
+Observability and security are critical components of production-ready DevOps workflows.
+
+📫 Contact
+
+Author: Olatunbosun Ibiyinka
+LinkedIn: linkedin.com/in/olatunbosunibiyinka
+GitHub: github.com/olatunbosunibiyinka

@@ -1,5 +1,5 @@
 cat > README.md <<'EOF'
-# DevOps Portfolio Project for Olatunbosun Ibiyinka
+# My CV — As a Production System
 ## CI/CD Pipeline Status
 
 | Workflow | Status | Description |
@@ -8,8 +8,45 @@ cat > README.md <<'EOF'
 | **Security Scans** | ![Security Scans](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/security.yml/badge.svg) | Runs SonarCloud & Trivy vulnerability checks |
 | **CD Deploy** | ![CD Deploy](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/deploy.yml/badge.svg) | Deploys the app to Azure Kubernetes Service |
 
+I got tired of explaining what I do — so I deployed it.
+For years, my résumé was just a neat little PDF trying to summarize automation, resilience, and scale into bullet points.
+It always felt wrong.
+How do you write DevOps on paper?
+You can’t. You have to run it.
 
-This repository contains a hands-on DevOps project designed to showcase end-to-end skills across infrastructure, automation, monitoring, and security.
+💡 The Idea
+Instead of describing my skills, I built them — as infrastructure.
+This project is my CV, deployed like a real production system. From scratch. End-to-end. Fully automated.
+
+🧩 The Stack
+When I push a new commit, the pipeline wakes up:
+
+
+Terraform provisions a fresh Azure environment (AKS + ACR + networking)
+
+Docker packages and runs my CV web app
+
+Deploy workloads on Kubernetes (AKS+ACR)
+
+GitHub Actions runs linting, tests, and security scans (SonarCloud + Trivy)
+
+Prometheus + Grafana monitor performance and metrics
+
+Alertmanager emails me if anything breaks
+
+Yes — even my CV has dashboards and uptime alerts.
+
+⚙️ The Philosophy
+Recruiters often ask:
+
+“Can you handle production-grade environments?”
+
+This project answers that question before they ever send the email.
+When you visit my CV, you’re not reading about uptime, IaC, or observability —
+you’re experiencing it.
+Every word, every deployment, every alert says the same thing:
+
+This engineer doesn’t describe DevOps — he lives it.
 
 ---
 

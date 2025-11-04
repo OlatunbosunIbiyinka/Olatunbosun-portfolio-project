@@ -56,6 +56,6 @@ jobs:
       # Push Docker image to ACR
       - name: Push Docker image
         run: |
-          docker build -t ola-portfolio-app:latest .
+          docker build -t ola-portfolio-app:latest ./app
           docker tag ola-portfolio-app:latest olaacr01.azurecr.io/ola-portfolio-app:latest
           docker push olaacr01.azurecr.io/ola-portfolio-app:latest

@@ -12,23 +12,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Azure login
+      # Step 2: Azure login
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+          allow-no-subscriptions: true  # Critical if SP has no subscription
 
-      # ACR login
+      # Step 3: ACR login
       - name: ACR Login
-        run: az acr login --name olaacr01
+        run: |
+          az acr login --name olaacr01
 
-      # Deploy updated image to AKS
+      # Step 4: Set Docker image variable
+      - name: Set image
+        run: echo "IMAGE=olaacr01.azurecr.io/ola-portfolio-app:latest" >> $GITHUB_ENV
+
+      # Step 5: Get AKS credentials
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
+
+      # Step 6: Deploy to AKS with rollback on failure
       - name: Deploy to AKS
         run: |
-          IMAGE=olaacr01.azurecr.io/ola-portfolio-app:latest
-          az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
+          set -e  # Fail the step if any command fails
+
+          # Deploy the new image
           kubectl set image deployment/portfolio-app portfolio-app=$IMAGE --record
-          kubectl rollout status deployment/portfolio-app --timeout=3m
+
+          # Wait for rollout to complete
+          if ! kubectl rollout status deployment/portfolio-app --timeout=3m; then
+            echo "Rollout failed, performing rollback..."
+            kubectl rollout undo deployment/portfolio-app
+            exit 1
+          fi

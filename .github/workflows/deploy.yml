@@ -11,43 +11,55 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
+    env:
+      IMAGE: olaacr01.azurecr.io/ola-portfolio-app:latest
+
     steps:
-      # Step 1: Checkout code
+      # 1. Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Azure login
+      # 2. Azure login using Service Principal
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          allow-no-subscriptions: true  # Critical if SP has no subscription
+          allow-no-subscriptions: true
 
-      # Step 3: ACR login
+      # 3. Login to Azure Container Registry
       - name: ACR Login
-        run: |
-          az acr login --name olaacr01
+        run: az acr login --name olaacr01
 
-      # Step 4: Set Docker image variable
-      - name: Set image
-        run: echo "IMAGE=olaacr01.azurecr.io/ola-portfolio-app:latest" >> $GITHUB_ENV
+      # 4. Build Docker image
+      - name: Build Docker image
+        run: docker build -t ola-portfolio-app:latest .
 
-      # Step 5: Get AKS credentials
-      - name: Get AKS credentials
-        run: |
-          az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
+      # 5. Tag Docker image for ACR
+      - name: Tag Docker image
+        run: docker tag ola-portfolio-app:latest $IMAGE
 
-      # Step 6: Deploy to AKS with rollback on failure
+      # 6. Push Docker image to ACR
+      - name: Push Docker image to ACR
+        run: docker push $IMAGE
+
+      # 7. Deploy to AKS with rollout and rollback
       - name: Deploy to AKS
         run: |
-          set -e  # Fail the step if any command fails
+          # Get AKS credentials
+          az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
 
-          # Deploy the new image
-          kubectl set image deployment/portfolio-app portfolio-app=$IMAGE --record
+          # Apply or update the deployment
+          if kubectl get deployment ola-portfolio-app -n default; then
+            echo "Updating deployment with new image..."
+            kubectl set image deployment/ola-portfolio-app ola-portfolio-app=$IMAGE -n default
+          else
+            echo "Deployment not found, applying new deployment manifest..."
+            kubectl apply -f k8s/deployment.yaml
+          fi
 
-          # Wait for rollout to complete
-          if ! kubectl rollout status deployment/portfolio-app --timeout=3m; then
+          # Wait for rollout to complete and rollback on failure
+          if ! kubectl rollout status deployment/ola-portfolio-app -n default --timeout=3m; then
             echo "Rollout failed, performing rollback..."
-            kubectl rollout undo deployment/portfolio-app
+            kubectl rollout undo deployment/ola-portfolio-app -n default
             exit 1
           fi

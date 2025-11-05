@@ -132,3 +132,5 @@ Observability and security are critical components of production-ready DevOps wo
 Author: Olatunbosun Ibiyinka
 LinkedIn: linkedin.com/in/olatunbosunibiyinka
 GitHub: github.com/olatunbosunibiyinka
+
+[image alt](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/blob/main/MyArchitechture.drawio%20(1).png)

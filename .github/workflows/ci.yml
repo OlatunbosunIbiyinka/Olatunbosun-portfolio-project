@@ -51,7 +51,7 @@ jobs:
         with:
           login-server: olaacr01.azurecr.io
           username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          password: ${{ secrets.ACR_PASSWORD }} 
 
       # Push Docker image to ACR
       - name: Push Docker image

@@ -13,6 +13,9 @@ jobs:
 
     env:
       IMAGE: olaacr01.azurecr.io/ola-portfolio-app:latest
+      RESOURCE_GROUP: ola-rg
+      CLUSTER_NAME: ola-aks
+      NAMESPACE: default
 
     steps:
       # 1. Checkout code
@@ -30,36 +33,29 @@ jobs:
       - name: ACR Login
         run: az acr login --name olaacr01
 
-      # 4. Build Docker image
-      - name: Build Docker image
-        run: docker build -t ola-portfolio-app:latest ./app
+      # 4. Build and push Docker image to ACR
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t $IMAGE ./app
+          docker push $IMAGE
 
-      # 5. Tag Docker image for ACR
-      - name: Tag Docker image
-        run: docker tag ola-portfolio-app:latest $IMAGE
-
-      # 6. Push Docker image to ACR
-      - name: Push Docker image to ACR
-        run: docker push $IMAGE
-
-      # 7. Deploy to AKS with rollout and rollback
+      # 5. Deploy to AKS with rollout and rollback
       - name: Deploy to AKS
         run: |
-          # Get AKS credentials
-          az aks get-credentials --resource-group ola-rg --name ola-aks --overwrite-existing
+          echo "Getting AKS credentials..."
+          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
 
-          # Apply or update the deployment
-          if kubectl get deployment ola-portfolio-app -n default; then
-            echo "Updating deployment with new image..."
-            kubectl set image deployment/ola-portfolio-app ola-portfolio-app=$IMAGE -n default
-          else
-            echo "Deployment not found, applying new deployment manifest..."
-            kubectl apply -f k8s/deployment.yaml
-          fi
+          echo "Substituting image placeholder..."
+          sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/deployment.yaml
 
-          # Wait for rollout to complete and rollback on failure
-          if ! kubectl rollout status deployment/ola-portfolio-app -n default --timeout=3m; then
-            echo "Rollout failed, performing rollback..."
-            kubectl rollout undo deployment/ola-portfolio-app -n default
+          echo "Applying deployment manifest..."
+          kubectl apply -f k8s/deployment.yaml -n $NAMESPACE
+
+          echo "Verifying rollout..."
+          if ! kubectl rollout status deployment/ola-portfolio-app -n $NAMESPACE --timeout=3m; then
+            echo "Rollout failed. Performing rollback..."
+            kubectl rollout undo deployment/ola-portfolio-app -n $NAMESPACE
             exit 1
+          else
+            echo "Rollout successful!"
           fi

@@ -32,7 +32,7 @@ jobs:
 
       # 4. Build Docker image
       - name: Build Docker image
-        run: docker build -t ola-portfolio-app:latest .
+        run: docker build -t ola-portfolio-app:latest ./app
 
       # 5. Tag Docker image for ACR
       - name: Tag Docker image

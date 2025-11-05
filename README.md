@@ -133,63 +133,32 @@ Author: Olatunbosun Ibiyinka
 LinkedIn: linkedin.com/in/olatunbosunibiyinka
 GitHub: github.com/olatunbosunibiyinka
 
-[image alt](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/blob/main/MyArchitechture.drawio%20(1).png)
-Screenshot 2025-10-27 114547.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 114651.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 114741.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 115238.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 115643.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 125320.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 131057.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 141712.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 143749.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 145829.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 150629.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 151357.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 151846.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 152019.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 152209.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 152302.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 162552.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 162615.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 162710.png
-Add files via upload
-20 hours ago
-Screenshot 2025-10-27 164834.png
-Add files via upload
+##SCREENSHOTS
+
+<img width="1096" height="681" alt="MyArchitechture drawio (1)" src="https://github.com/user-attachments/assets/3ada42df-0a67-4b78-9d65-20cb2b7499ae" />
+
+<img width="1086" height="430" alt="Screenshot 2025-11-03 093734" src="https://github.com/user-attachments/assets/9e4b7032-30ea-475b-a873-d17770e21584" />
+<img width="1321" height="529" alt="Screenshot 2025-11-03 094538" src="https://github.com/user-attachments/assets/24cbc692-bc84-4f03-a833-8d95721b27c4" />
+
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 141712" src="https://github.com/user-attachments/assets/31a00bf1-27f7-40f1-b5c3-43675c79891e" />
+
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 125320" src="https://github.com/user-attachments/assets/f5415ba3-d301-4f8b-aa12-9a691d30c39a" />
+
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 145829" src="https://github.com/user-attachments/assets/510ab293-1a8e-4d2f-be05-ad34bb9b97fa" />
+
+<img width="1919" height="1077" alt="Screenshot 2025-10-27 145915" src="https://github.com/user-attachments/assets/40f6900c-d487-414e-82f5-f7e022f4b7d0" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 150629" src="https://github.com/user-attachments/assets/595ab4c7-208d-4f41-9599-0e2d917b4c28" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 151357" src="https://github.com/user-attachments/assets/cb1e3292-ded7-4358-88b1-df098fb45350" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 115238" src="https://github.com/user-attachments/assets/d00f145f-8c71-49f0-878a-fffa9f29f7e6" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 115643" src="https://github.com/user-attachments/assets/41479b1b-e899-496a-8c77-5e9907f1cd68" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 131057" src="https://github.com/user-attachments/assets/06db843b-8ff5-4e4a-8cf7-2f4d13c0dc4a" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 143749" src="https://github.com/user-attachments/assets/1066df29-acbf-4c59-8d4f-947f2d421e33" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 151846" src="https://github.com/user-attachments/assets/080a67b9-1012-434b-9a66-2d9f330e5b91" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 152019" src="https://github.com/user-attachments/assets/a3017fd7-fbc9-4853-b495-afd36abd52cc" />
+<img width="1918" height="1079" alt="Screenshot 2025-10-27 152209" src="https://github.com/user-attachments/assets/af355778-70fa-4895-a4af-97edb4da8e9d" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 152302" src="https://github.com/user-attachments/assets/d1b428a4-e526-4ae7-ab76-d26b45a3c260" />
+<img width="1919" height="1066" alt="Screenshot 2025-10-27 162552" src="https://github.com/user-attachments/assets/a74df91e-c373-4980-80b9-daea6073ac38" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 162615" src="https://github.com/user-attachments/assets/363212b9-1aba-4022-b921-902e95126022" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 162710" src="https://github.com/user-attachments/assets/20a32748-41bf-48c8-8d07-53a264450e9f" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 162842" src="https://github.com/user-attachments/assets/b9d9ed56-d4fd-48f4-a988-d888571347f1" />
+<img width="1919" height="1079" alt="Screenshot 2025-10-27 164834" src="https://github.com/user-attachments/assets/9c063497-ee2f-4dff-8d4a-2e9f9c458308" />

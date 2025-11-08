@@ -1,36 +1,35 @@
 name: CI Pipeline
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  ci:
+  build:
     runs-on: ubuntu-latest
 
+    env:
+      REGISTRY: olaacr01.azurecr.io
+      IMAGE_NAME: ola-portfolio-app
+      IMAGE_TAG: v${{ github.run_number }}
+
     steps:
-      # Checkout repo
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Setup Node.js
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: npm
           cache-dependency-path: ./app/package-lock.json
 
-      # Install dependencies
       - name: Install dependencies
         working-directory: ./app
         run: npm ci
 
-      # SonarCloud scan
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         with:
@@ -41,21 +40,20 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Build Docker image
-      - name: Build Docker image
-        run: docker build -t ola-portfolio-app:latest ./app
+      - name: Login to ACR
+        run: echo ${{ secrets.ACR_PASSWORD }} | docker login $REGISTRY -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-      # Log in to Azure Container Registry
-      - name: ACR Login
-        uses: azure/docker-login@v1
-        with:
-          login-server: olaacr01.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }} 
-
-      # Push Docker image to ACR
-      - name: Push Docker image
+      - name: Build and push image
         run: |
-          docker build -t ola-portfolio-app:latest ./app
-          docker tag ola-portfolio-app:latest olaacr01.azurecr.io/ola-portfolio-app:latest
-          docker push olaacr01.azurecr.io/ola-portfolio-app:latest
+          docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG ./app
+          docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+          echo "IMAGE=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Save image tag to file
+        run: echo "$IMAGE" > image-tag.txt
+
+      - name: Upload image metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tag
+          path: image-tag.txt

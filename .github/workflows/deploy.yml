@@ -3,59 +3,67 @@ name: CD - Deploy to AKS
 on:
   workflow_run:
     workflows: ["CI Pipeline"]
-    types:
-      - completed
+    types: [completed]
 
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
+  
     env:
-      IMAGE: olaacr01.azurecr.io/ola-portfolio-app:latest
+      DEPLOY_ENV: production
+      APP_URL: http://4.250.217.126
+      REGISTRY: olaacr01.azurecr.io
       RESOURCE_GROUP: ola-rg
       CLUSTER_NAME: ola-aks
       NAMESPACE: default
+      IMAGE_NAME: ola-portfolio-app
 
     steps:
-      # 1. Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Azure login using Service Principal
+      - name: Download image tag
+        uses: actions/download-artifact@v4
+        with:
+          name: image-tag
+
+      - name: Set IMAGE variable
+        run: echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
+
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-          allow-no-subscriptions: true
 
-      # 3. Login to Azure Container Registry
-      - name: ACR Login
-        run: az acr login --name olaacr01
+      - name: Get AKS credentials
+        run: az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
 
-      # 4. Build and push Docker image to ACR
-      - name: Build and Push Docker Image
+      - name: Update and apply manifest
         run: |
-          docker build -t $IMAGE ./app
-          docker push $IMAGE
-
-      # 5. Deploy to AKS with rollout and rollback
-      - name: Deploy to AKS
-        run: |
-          echo "Getting AKS credentials..."
-          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
-
-          echo "Substituting image placeholder..."
           sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/deployment.yaml
-
-          echo "Applying deployment manifest..."
           kubectl apply -f k8s/deployment.yaml -n $NAMESPACE
 
-          echo "Verifying rollout..."
-          if ! kubectl rollout status deployment/ola-portfolio-app -n $NAMESPACE --timeout=3m; then
-            echo "Rollout failed. Performing rollback..."
-            kubectl rollout undo deployment/ola-portfolio-app -n $NAMESPACE
+      - name: Monitor rollout
+        run: |
+          echo "Monitoring rollout..."
+          if ! kubectl rollout status deployment/$IMAGE_NAME -n $NAMESPACE --timeout=3m; then
+            echo "❌ Rollout failed. Rolling back..."
+            kubectl rollout undo deployment/$IMAGE_NAME -n $NAMESPACE
             exit 1
           else
-            echo "Rollout successful!"
+            echo "✅ Rollout successful!"
+          fi
+
+      - name: Verify Pod Health
+        run: |
+          echo "Verifying pod health..."
+          kubectl get pods -n $NAMESPACE
+          if [[ $(kubectl get pods -n $NAMESPACE -l app=$IMAGE_NAME -o jsonpath='{.items[*].status.containerStatuses[*].ready}') != *"true"* ]]; then
+            echo "⚠️ Some pods not ready!"
+            kubectl describe pods -n $NAMESPACE
+            exit 1
+          else
+            echo "🎉 All pods are healthy and running!"
           fi

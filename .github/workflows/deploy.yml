@@ -49,11 +49,11 @@ jobs:
         run: |
           echo "Monitoring rollout..."
           if ! kubectl rollout status deployment/$IMAGE_NAME -n $NAMESPACE --timeout=3m; then
-            echo "❌ Rollout failed. Rolling back..."
+            echo "Rollout failed. Rolling back..."
             kubectl rollout undo deployment/$IMAGE_NAME -n $NAMESPACE
             exit 1
           else
-            echo "✅ Rollout successful!"
+            echo "Rollout successful!"
           fi
 
       - name: Verify Pod Health
@@ -61,9 +61,9 @@ jobs:
           echo "Verifying pod health..."
           kubectl get pods -n $NAMESPACE
           if [[ $(kubectl get pods -n $NAMESPACE -l app=$IMAGE_NAME -o jsonpath='{.items[*].status.containerStatuses[*].ready}') != *"true"* ]]; then
-            echo "⚠️ Some pods not ready!"
+            echo "Some pods not ready!"
             kubectl describe pods -n $NAMESPACE
             exit 1
           else
-            echo "🎉 All pods are healthy and running!"
+            echo "All pods are healthy and running!"
           fi

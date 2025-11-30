@@ -15,14 +15,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Download artifact created by CI pipeline
+      # 🔽 Download image-tag artifact from the CI workflow that triggered this job
       - name: Download image tag artifact
         uses: actions/download-artifact@v4
         with:
           name: image-tag
           path: .
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.event.workflow_run.repository.full_name }}
 
-      # Load the image tag into a variable
+      # 🔽 Load image tag into environment variable
       - name: Read image tag
         id: image
         run: echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
@@ -37,7 +39,6 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # Authenticate to ACR (TEMP: Admin login — will be replaced with OIDC)
       - name: Log in to ACR
         uses: azure/docker-login@v1
         with:
@@ -45,7 +46,6 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # Run Trivy on the dynamically picked image
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:

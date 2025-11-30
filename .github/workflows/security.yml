@@ -10,9 +10,22 @@ on:
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Download artifact created by CI pipeline
+      - name: Download image tag artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-tag
+          path: .
+
+      # Load the image tag into a variable
+      - name: Read image tag
+        id: image
+        run: echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
@@ -24,7 +37,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      # 🔑 Log in to Azure Container Registry
+      # Authenticate to ACR (TEMP: Admin login — will be replaced with OIDC)
       - name: Log in to ACR
         uses: azure/docker-login@v1
         with:
@@ -32,10 +45,11 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
+      # Run Trivy on the dynamically picked image
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: "olaacr01.azurecr.io/ola-portfolio-app:latest"
+          image-ref: ${{ env.IMAGE }}
           format: "table"
           exit-code: "0"
           ignore-unfixed: true

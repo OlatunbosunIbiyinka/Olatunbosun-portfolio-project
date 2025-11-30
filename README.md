@@ -69,7 +69,7 @@ Note: Remote backend is configured for state storage. Sensitive files (*.tfstate
 ⚙️ Continuous Integration & Continuous Deployment (CI/CD)
 
 This project implements a production-grade CI/CD pipeline using GitHub Actions, Azure Container Registry (ACR), and Azure Kubernetes Service (AKS).
-It automates the entire process — from building and testing the app to deploying it on a live Kubernetes cluster.
+It automates the entire process — from building and testing the app to deploying it on a live Kubernetes cluster(AKS).
 🧩 Pipeline Overview
 
 The CI/CD process is split into two workflows:

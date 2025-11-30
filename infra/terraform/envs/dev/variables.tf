@@ -19,6 +19,7 @@ variable "aks_name" {
   type        = string
 }
 
+
 variable "acr_name" {
   description = "ACR name for dev environment"
   default     = "olaacr01"

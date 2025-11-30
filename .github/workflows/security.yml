@@ -9,13 +9,13 @@ on:
 
 jobs:
   security-scan:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}   # <-- RUN ONLY IF CI SUCCEEDED
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🔽 Download image-tag artifact from the CI workflow that triggered this job
       - name: Download image tag artifact
         uses: actions/download-artifact@v4
         with:
@@ -24,7 +24,6 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           repository: ${{ github.event.workflow_run.repository.full_name }}
 
-      # 🔽 Load image tag into environment variable
       - name: Read image tag
         id: image
         run: echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV

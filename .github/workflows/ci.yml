@@ -50,9 +50,10 @@ jobs:
           echo "IMAGE=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Save image tag to file
-        run:  echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ github.run_number }}" > image-tag.txt
+        run: echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" > image-tag.txt
 
       - name: Upload image metadata
+        if: always()   # <-- THIS IS THE IMPORTANT FIX
         uses: actions/upload-artifact@v4
         with:
           name: image-tag

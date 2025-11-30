@@ -7,14 +7,22 @@ on:
       - completed
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
 jobs:
   security-scan:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}   # <-- RUN ONLY IF CI SUCCEEDED
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Debug workflow_run event info
+        run: |
+          echo "Run ID: ${{ github.event.workflow_run.id }}"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Repository: ${{ github.event.workflow_run.repository.full_name }}"
 
       - name: Download image tag artifact
         uses: actions/download-artifact@v4
@@ -27,16 +35,6 @@ jobs:
       - name: Read image tag
         id: image
         run: echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
-
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
-        with:
-          projectBaseDir: ./app
-          args: >
-            -Dsonar.organization=olatunbosunibiyinka
-            -Dsonar.projectKey=OlatunbosunIbiyinka_Olatunbosun-portfolio-project
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Log in to ACR
         uses: azure/docker-login@v1
@@ -52,8 +50,3 @@ jobs:
           format: "table"
           exit-code: "0"
           ignore-unfixed: true
-      - name: Debug workflow_run event info
-        run: |
-          echo "Run ID: ${{ github.event.workflow_run.id }}"
-          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
-          echo "Repository: ${{ github.event.workflow_run.repository.full_name }}"

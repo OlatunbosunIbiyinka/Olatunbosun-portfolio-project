@@ -52,3 +52,8 @@ jobs:
           format: "table"
           exit-code: "0"
           ignore-unfixed: true
+      - name: Debug workflow_run event info
+        run: |
+          echo "Run ID: ${{ github.event.workflow_run.id }}"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Repository: ${{ github.event.workflow_run.repository.full_name }}"

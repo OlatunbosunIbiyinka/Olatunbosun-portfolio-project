@@ -2,51 +2,71 @@ name: Security Scans
 
 on:
   workflow_run:
-    workflows: ["CI Pipeline"]
+    workflows: [ "CI Pipeline" ]
     types:
       - completed
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
-  id-token: write
+  actions: read        # needed to read artifacts from another workflow run
+  id-token: write      # in case we want Azure auth here (Trivy may need ACR access)
 
 jobs:
   security-scan:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Debug workflow_run event info
-        run: |
-          echo "Run ID: ${{ github.event.workflow_run.id }}"
-          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
-          echo "Repository: ${{ github.event.workflow_run.repository.full_name }}"
+    env:
+      REGISTRY: olaacr01.azurecr.io
 
-      - name: Download image tag artifact
-        uses: actions/download-artifact@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Debug workflow_run info
+        run: |
+          echo "Triggered by workflow run: ${{ github.event.workflow_run.id }}"
+          echo "Repository: ${{ github.event.workflow_run.repository.full_name }}"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+
+      - name: Download image tag artifact from CI
+        uses: dawidd6/action-download-artifact@v3
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: ci.yml                 # CI workflow file name
+          run_id: ${{ github.event.workflow_run.id }}
           name: image-tag
           path: .
-          run-id: ${{ github.event.workflow_run.id }}
-          repository: ${{ github.event.workflow_run.repository.full_name }}
 
       - name: Read image tag
-        id: image
-        run: echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
+        id: read-image
+        run: |
+          echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
+          echo "Image from CI: $(cat image-tag.txt)"
 
-      - name: Log in to ACR
-        uses: azure/docker-login@v1
+      - name: Azure Login (OIDC)
+        uses: azure/login@v1
         with:
-          login-server: olaacr01.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Run Trivy vulnerability scanner
+      - name: Login to ACR
+        run: az acr login --name olaacr01
+
+      - name: Trivy Vulnerability Scan (Image)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE }}
-          format: "table"
-          exit-code: "0"
+          format: table
           ignore-unfixed: true
+          # Set to "1" if you want the pipeline to FAIL on vulns
+          exit-code: "0"
+
+      - name: Checkov IaC Scan (Terraform)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ./infra
+          framework: terraform
+          soft_fail: false  # set to true if you want warnings instead of failing

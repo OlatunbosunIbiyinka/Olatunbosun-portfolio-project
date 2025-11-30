@@ -2,15 +2,21 @@ name: CD - Deploy to AKS
 
 on:
   workflow_run:
-    workflows: ["CI Pipeline"]
-    types: [completed]
+    workflows: [ "CI Pipeline" ]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write     # required for OIDC login
 
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-  
     env:
       DEPLOY_ENV: production
       APP_URL: http://4.250.217.126
@@ -20,34 +26,46 @@ jobs:
       NAMESPACE: default
       IMAGE_NAME: ola-portfolio-app
 
+    environment:
+      name: development
+      url: ${{ env.APP_URL }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download image tag from CI workflow
+      - name: Download image tag artifact from CI
         uses: dawidd6/action-download-artifact@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: ci.yml       
+          workflow: ci.yml
           run_id: ${{ github.event.workflow_run.id }}
           name: image-tag
           path: .
 
       - name: Set IMAGE variable
-        run: echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
+        run: |
+          echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
+          echo "Deploying image: $(cat image-tag.txt)"
 
-      - name: Azure Login
+      - name: Azure Login (OIDC)
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get AKS credentials
         run: az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
 
-      - name: Update and apply manifest
+      # Render manifest without mutating the original file
+      - name: Render manifest with image
         run: |
-          sed -i "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/deployment.yaml
-          kubectl apply -f k8s/deployment.yaml -n $NAMESPACE
+          mkdir -p rendered
+          sed "s|IMAGE_PLACEHOLDER|$IMAGE|g" k8s/deployment.yaml > rendered/deployment.yaml
+
+      - name: Apply manifest
+        run: kubectl apply -f rendered/deployment.yaml -n $NAMESPACE
 
       - name: Monitor rollout
         run: |

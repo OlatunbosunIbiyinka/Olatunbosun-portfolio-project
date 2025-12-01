@@ -1,28 +1,19 @@
-variable "location" {
-  description = "Azure region for the dev environment"
-  default     = "uksouth"
-  type        = string
-}
-
 variable "resource_group_name" {
-  description = "Resource group for dev environment"
-  default     = "ola-rg"
+  description = "Resource group for environment"
   type        = string
 }
 
-variable "aks" {
-  description = "AKS cluster name for dev environment"
-  default     = "ola-aks"
+variable "location" {
+  description = "Azure region for the environment"
   type        = string
 }
 
-variable "acr" {
-  description = "ACR name for dev environment"
-  default     = "olaacr01"
+variable "aks_name" {
+  description = "AKS cluster name"
   type        = string
 }
 
-variable "acr_id" {
-  description = "ACR resource ID for attaching to AKS"
+variable "acr_name" {
+  description = "ACR name"
   type        = string
 }

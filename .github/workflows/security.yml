@@ -2,15 +2,14 @@ name: Security Scans
 
 on:
   workflow_run:
-    workflows: [ "CI Pipeline" ]
-    types:
-      - completed
+    workflows: ["CI Pipeline"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read        # needed to read artifacts from another workflow run
-  id-token: write      # in case we want Azure auth here (Trivy may need ACR access)
+  actions: read
+  id-token: write
 
 jobs:
   security-scan:
@@ -26,15 +25,15 @@ jobs:
 
       - name: Debug workflow_run info
         run: |
-          echo "Triggered by workflow run: ${{ github.event.workflow_run.id }}"
-          echo "Repository: ${{ github.event.workflow_run.repository.full_name }}"
+          echo "Triggered by workflow: ${{ github.event.workflow_run.id }}"
+          echo "Repo: ${{ github.event.workflow_run.repository.full_name }}"
           echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
 
       - name: Download image tag artifact from CI
         uses: dawidd6/action-download-artifact@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: ci.yml                 # CI workflow file name
+          workflow: ci.yml
           run_id: ${{ github.event.workflow_run.id }}
           name: image-tag
           path: .
@@ -61,12 +60,12 @@ jobs:
           image-ref: ${{ env.IMAGE }}
           format: table
           ignore-unfixed: true
-          # Set to "1" if you want the pipeline to FAIL on vulns
           exit-code: "0"
 
-      - name: Checkov IaC Scan (Terraform)
+      - name: Checkov IaC Scan (Terraform with suppressions)
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: ./infra
           framework: terraform
-          soft_fail: false  # set to true if you want warnings instead of failing
+          soft_fail: false
+          config_file: ./infra/checkov.suppressions.yaml

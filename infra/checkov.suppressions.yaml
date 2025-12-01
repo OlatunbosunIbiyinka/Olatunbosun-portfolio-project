@@ -1,4 +1,4 @@
-skip-checks:
+skip-check:
   - CKV_AZURE_166
   - CKV_AZURE_139
   - CKV_AZURE_233

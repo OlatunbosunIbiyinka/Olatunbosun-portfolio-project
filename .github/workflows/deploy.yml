@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DEPLOY_ENV: production
+      DEPLOY_ENV: development
       APP_URL: http://4.250.217.126
       REGISTRY: olaacr01.azurecr.io
       RESOURCE_GROUP: ola-rg

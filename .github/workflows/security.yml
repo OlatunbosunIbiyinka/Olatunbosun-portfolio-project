@@ -69,3 +69,4 @@ jobs:
           framework: terraform
           soft_fail: false
           config_file: ./infra/checkov.suppressions.yaml
+          

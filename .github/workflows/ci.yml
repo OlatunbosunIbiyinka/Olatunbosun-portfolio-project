@@ -7,9 +7,9 @@ on:
     branches: [ main ]
 
 permissions:
-  contents: read       # checkout
-  id-token: write      # required for OIDC auth to Azure
-  actions: read        # safe, allows future use of actions metadata if needed
+  contents: read
+  id-token: write
+  actions: read
 
 jobs:
   build:

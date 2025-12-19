@@ -68,109 +68,189 @@ Note: Remote backend is configured for state storage. Sensitive files (*.tfstate
 
 ⚙️ Continuous Integration & Continuous Deployment (CI/CD)
 
-This project implements a production-grade CI/CD pipeline using GitHub Actions, Azure Container Registry (ACR), and Azure Kubernetes Service (AKS).
-It automates the entire process — from building and testing the app to deploying it on a live Kubernetes cluster(AKS).
-🧩 Pipeline Overview
+CI/CD Pipeline – Automated Build, Security, and Deployment to Azure AKS
 
-The CI/CD process is split into two workflows:
+This project implements a fully automated end-to-end CI/CD pipeline using GitHub Actions, Terraform, Azure Container Registry (ACR), and Azure Kubernetes Service (AKS).
+The pipeline builds, tests, secures, packages, and deploys a containerized portfolio application following enterprise-grade DevOps and RBAC controls.
 
-🧱 1. CI Pipeline (.github/workflows/ci.yml)
+📌 Architecture Overview
+Developer Commit  →  GitHub CI Pipeline
+          → Build + Test + Security Scan
+          → Build Docker Image + Push to ACR
+          → GitHub CD Pipeline Triggered
+          → Deploy Updated Manifest to AKS
+          → Rollout Status + Automated Rollback
 
-Triggered on every push or pull request to the main branch.
+1️⃣ CI Pipeline (Continuous Integration)
 
-Steps performed:
+The CI pipeline executes on every commit/PR and performs:
 
-Checkout Code – Pulls the latest code from the repository.
+✔ 1. Code checkout & dependency installation
 
-Setup Node.js Environment – Installs dependencies using npm ci.
+Ensures the environment matches production.
 
-Static Code Analysis – Runs a SonarCloud scan for code quality and security checks.
+✔ 2. Unit tests & linting
 
-Build & Push Docker Image –
+Guarantees code quality and security compliance.
 
-Builds the app Docker image.
+✔ 3. Build optimized React application
 
-Tags it with the GitHub run number (e.g., v45).
+Uses Node.js to create a production-ready build.
 
-Pushes it to the Azure Container Registry (ACR).
+✔ 4. Docker image creation
 
-Save Metadata – Saves the image tag (image-tag.txt) and uploads it as an artifact for the CD pipeline to use.
+Built from the /app directory using a multi-stage Dockerfile.
 
-Example image tag:
+✔ 5. Push image to ACR
 
-olaacr01.azurecr.io/ola-portfolio-app:v45
+The image is tagged dynamically:
 
-🚀 2. CD Pipeline (.github/workflows/cd.yml)
+<registry>/<image-name>:v<build-number>
 
-Automatically triggered when the CI pipeline completes successfully.
 
-Steps performed:
+The CI pipeline uploads an artifact called image-tag.txt, which the CD pipeline consumes.
 
-Download Image Artifact – Retrieves the image tag from the CI pipeline.
+2️⃣ CD Pipeline (Continuous Deployment)
 
-Azure Login – Authenticates securely to Azure using service principal credentials.
+Triggered only when CI completes successfully.
 
-Fetch AKS Credentials – Connects to the AKS cluster using az aks get-credentials.
+✔ 1. OIDC Federated Azure Login
 
-Update Kubernetes Manifest –
-Dynamically replaces IMAGE_PLACEHOLDER in k8s/deployment.yaml with the new image tag.
+No secrets stored — GitHub uses workload identity federation to authenticate securely.
 
-Deploy to AKS – Applies the updated Kubernetes manifests using kubectl apply.
+✔ 2. Get AKS credentials
 
-Monitor Rollout & Health –
+The CD pipeline fetches cluster credentials using:
 
-Monitors the deployment rollout (kubectl rollout status).
+az aks get-credentials --resource-group <rg> --name <aks-name>
 
-Rolls back automatically if deployment fails.
+✔ 3. Manifest rendering
 
-Checks pod health and readiness before marking success.
+The deployment manifest (deployment.yaml) contains:
 
-Cluster Cleanup (Manual) – Old ReplicaSets are pruned periodically to keep the environment clean.
+image: IMAGE_PLACEHOLDER
 
-🧠 Key Features
 
-✅ Fully automated build → test → deploy pipeline
+The pipeline dynamically replaces it with the latest built image:
 
-🔄 Automatic rollback on deployment failure
+sed "s|IMAGE_PLACEHOLDER|$IMAGE|g"
 
-🧩 Dynamic image versioning via GitHub Actions environment variables
 
-🧠 Integrated SonarCloud static analysis
+This ensures Kubernetes always deploys the correct version.
 
-🔒 Secure ACR login with GitHub Secrets
+✔ 4. Apply manifest to AKS
+kubectl apply -f rendered/deployment.yaml
 
-☁️ Zero manual intervention — complete GitOps-style workflow
+✔ 5. Monitor rollout
 
-🔑 Environment Variables & Secrets
-Variable / Secret	Description
-ACR_USERNAME	Azure Container Registry username
-ACR_PASSWORD	Azure Container Registry password
-AZURE_CREDENTIALS	Azure service principal credentials (JSON)
-SONAR_TOKEN	Authentication token for SonarCloud
-REGISTRY	ACR login server (e.g., olaacr01.azurecr.io)
-IMAGE_NAME	Docker image name (e.g., ola-portfolio-app)
-RESOURCE_GROUP	Azure resource group name
-CLUSTER_NAME	AKS cluster name
-NAMESPACE	Kubernetes namespace (default)
-🧾 Deployment Flow Summary
+The pipeline waits for AKS to report success:
 
-Developer pushes code to main.
+kubectl rollout status deployment/ola-portfolio-app
 
-CI pipeline builds the app → runs tests → pushes image to ACR → uploads image tag.
+✔ 6. Automatic rollback on failure
 
-CD pipeline retrieves the image tag → updates the manifest → deploys to AKS.
+If a pod enters CrashLoopBackoff or ImagePullBackOff:
 
-Rollout is verified → pods are checked for health → automatic rollback if needed.
+kubectl rollout undo deployment/ola-portfolio-app
 
-🌍 Deployment Target
+✔ 7. Health verification
 
-Environment: production
+Ensures at least one READY pod exists before succeeding the deployment.
 
-App URL: http://4.250.217.126
+3️⃣ RBAC & Security Controls
+✔ ACR Access Control
 
-Cluster: ola-aks
+Two roles were assigned to ensure secure image management:
 
-Registry: olaacr01.azurecr.io
+Role	Purpose
+AcrPush (GitHub CI identity)	Allows pipeline to push images into ACR
+AcrPull (AKS kubelet identity)	Allows nodes to pull private images from ACR
+
+This prevents unauthorized registry access.
+
+✔ Cluster Access Control
+
+The GitHub CD workload identity was granted:
+
+Azure Kubernetes Service RBAC Writer
+→ Allows deployments, pod updates, rollouts.
+
+AKS Cluster Admin (when troubleshooting required)
+→ Full access, but only temporarily.
+
+This demonstrates least-privilege access in a real environment.
+
+4️⃣ Terraform Infrastructure Automation
+
+Terraform provisions:
+
+✔ Resource Group
+✔ Azure Container Registry
+✔ Azure Kubernetes Service
+✔ Managed Identity bindings
+✔ Role assignments (ACR Pull, ACR Push)
+
+Remote backend uses Azure Storage with state locking.
+
+5️⃣ Kubernetes Deployment
+
+The deployment uses:
+
+✔ 1 replica (scalable)
+✔ NGINX static file serving
+✔ Image supplied by pipeline
+✔ Port 80 exposed to a Service
+
+Example:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ola-portfolio-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ola-portfolio-app
+  template:
+    metadata:
+      labels:
+        app: ola-portfolio-app
+    spec:
+      containers:
+      - name: ola-portfolio-app
+        image: IMAGE_PLACEHOLDER
+        ports:
+        - containerPort: 80
+
+6️⃣ Deployment Verification
+
+After each rollout:
+
+kubectl get pods
+kubectl describe pod <pod>
+kubectl logs <pod>
+
+
+AKS validates:
+
+Pod readiness
+
+Image pull success
+
+No CrashLoopBackOff
+
+Service endpoint functioning
+
+Application responds at public IP
+
+✅ Key Outcomes
+🔹 Fully automated CI/CD from commit → AKS deployment
+🔹 Zero manual image tagging
+🔹 Secure access using Azure OIDC (no passwords)
+🔹 Automatic rollback protects production
+🔹 RBAC governance aligned with enterprise policy
+🔹 Terraform IaC ensures repeatable cloud environments
 
 
 📊 Observability

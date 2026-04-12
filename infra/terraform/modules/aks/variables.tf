@@ -293,6 +293,18 @@ variable "automatic_channel_upgrade" {
   default     = "patch"
 }
 
+variable "enable_key_vault_secrets_provider" {
+  description = "Install Azure Key Vault Secrets Provider (CSI) add-on. Must stay true if the cluster uses SecretProviderClass resources; set false only after deleting all SecretProviderClass CRs in Kubernetes."
+  type        = bool
+  default     = true
+}
+
+variable "key_vault_secret_rotation_enabled" {
+  description = "Enable automatic rotation polling for the Key Vault Secrets Provider add-on (optional; CSI works with this false)."
+  type        = bool
+  default     = false
+}
+
 variable "local_account_disabled" {
   description = "Disable local accounts (use Azure AD only)"
   type        = bool

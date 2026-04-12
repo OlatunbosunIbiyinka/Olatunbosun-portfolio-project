@@ -133,6 +133,15 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # Enable local accounts (disable for better security)
   local_account_disabled = var.local_account_disabled
 
+  # Key Vault Secrets Provider (CSI) — must be explicit or Terraform omits the block and Azure API treats the add-on as disabled,
+  # which fails with: "AzureKeyvaultSecretsProvider addon cannot be disabled due to more than 0 Secret Provider Classes"
+  dynamic "key_vault_secrets_provider" {
+    for_each = var.enable_key_vault_secrets_provider ? [1] : []
+    content {
+      secret_rotation_enabled = var.key_vault_secret_rotation_enabled
+    }
+  }
+
   # Tags
   tags = var.tags
 

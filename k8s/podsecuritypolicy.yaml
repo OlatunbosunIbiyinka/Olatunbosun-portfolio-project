@@ -1,0 +1,16 @@
+# Pod Security Policy (deprecated in 1.21+, using Pod Security Standards instead)
+# This file is kept for reference but Pod Security Standards should be used
+# Apply Pod Security Standards via namespace labels instead:
+# pod-security.kubernetes.io/enforce: restricted
+# pod-security.kubernetes.io/audit: restricted
+# pod-security.kubernetes.io/warn: restricted
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+

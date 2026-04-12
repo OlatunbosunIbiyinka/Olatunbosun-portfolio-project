@@ -1,0 +1,29 @@
+# Enterprise-grade: Cilium Hubble Installation
+# Hubble provides network observability for Cilium
+# This file contains the Helm values and installation instructions
+
+---
+# Note: Hubble is installed via Helm after AKS cluster creation
+# Run these commands after deploying the AKS cluster:
+
+# 1. Add Cilium Helm repository
+# helm repo add cilium https://helm.cilium.io/
+# helm repo update
+
+# 2. Install Hubble with best practices
+# helm upgrade --install hubble \
+#   --namespace kube-system \
+#   --set hubble.relay.enabled=true \
+#   --set hubble.ui.enabled=true \
+#   --set hubble.metrics.enabled=true \
+#   --set hubble.tls.auto.method=cronJob \
+#   --set hubble.relay.service.type=LoadBalancer \
+#   --set hubble.ui.service.type=LoadBalancer \
+#   --set prometheus.enabled=true \
+#   --set operator.prometheus.enabled=true \
+#   --set hubble.relay.image.tag=v1.14.0 \
+#   --set hubble.ui.image.tag=v1.14.0 \
+#   cilium/cilium
+
+# 3. Or use the values file below with:
+# helm upgrade --install hubble --namespace kube-system -f hubble-values.yaml cilium/cilium

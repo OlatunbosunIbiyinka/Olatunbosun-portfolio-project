@@ -1,0 +1,30 @@
+# Enterprise-grade: Default-deny NetworkPolicy for namespace isolation
+# This policy denies all ingress and egress traffic by default
+# Explicit allows must be created for required communication
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: default
+spec:
+  podSelector: {}  # Applies to all pods in the namespace
+  policyTypes:
+  - Ingress
+  - Egress
+  # No ingress/egress rules = deny all traffic
+---
+# Apply default-deny to all namespaces (except system namespaces)
+# Note: System namespaces (kube-system, kube-public, etc.) should have their own policies
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: kube-system
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  # System namespace will have explicit allows for DNS, metrics, etc.

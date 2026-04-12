@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ola-portfolio-app-netpol
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: ola-portfolio-app
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: default
+    - podSelector:
+        matchLabels:
+          app: ola-portfolio-app
+    ports:
+    - protocol: TCP
+      port: 80
+  # Allow DNS resolution
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow access to Key Vault (if using private endpoint, adjust accordingly)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow access to ACR
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+

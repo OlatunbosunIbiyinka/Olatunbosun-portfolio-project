@@ -1,0 +1,95 @@
+# Enterprise-grade: Allow Argo CD access
+# This policy allows Argo CD to manage and sync applications
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-argocd-access
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: ola-portfolio-app  # Adjust label selector for your application
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow Argo CD server to access application
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: argocd  # Adjust namespace for your Argo CD
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: argocd-server
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 443
+  # Allow Argo CD application controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: argocd
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: argocd-application-controller
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow Argo CD to access Kubernetes API
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow Argo CD to access Git repositories
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 22
+---
+# Allow Argo CD access in argocd namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-argocd-internal
+  namespace: argocd
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow internal Argo CD communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: argocd
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 443
+  egress:
+  # Allow Argo CD to access Kubernetes API
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow Argo CD to access Git repositories
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 22

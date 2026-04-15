@@ -27,18 +27,20 @@ cd infra/terraform
 ACR_NAME=$(terraform output -raw acr_login_server | cut -d'.' -f1)
 AKS_NAME=$(terraform output -raw aks_cluster_name)
 RESOURCE_GROUP=$(terraform output -raw resource_group_name)
+WORKLOAD_IDENTITY_CLIENT_ID=$(terraform output -raw workload_identity_client_id)
 cd ../..
 
 # Get AKS credentials
 echo "📋 Getting AKS credentials..."
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
 
-# Update deployment manifest with image
+# Update deployment manifest with image and workload identity (Key Vault CSI)
 echo "📝 Updating deployment manifest..."
 FULL_IMAGE_NAME="$ACR_NAME.azurecr.io/ola-portfolio-app:$IMAGE_TAG"
 
-# Update deployment.yaml
 sed -i.bak "s|IMAGE_PLACEHOLDER|$FULL_IMAGE_NAME|g" k8s/deployment.yaml
+sed -i.bak "s/WORKLOAD_IDENTITY_CLIENT_ID_PLACEHOLDER/$WORKLOAD_IDENTITY_CLIENT_ID/g" k8s/serviceaccount.yaml
+sed -i.bak "s/WORKLOAD_IDENTITY_CLIENT_ID_PLACEHOLDER/$WORKLOAD_IDENTITY_CLIENT_ID/g" k8s/secretproviderclass.yaml
 
 # Apply Kubernetes manifests
 echo "☸️  Applying Kubernetes manifests..."
@@ -60,8 +62,10 @@ echo "✅ Verifying deployment..."
 kubectl get pods -l app=ola-portfolio-app
 kubectl get svc ola-portfolio-service
 
-# Restore original deployment.yaml
+# Restore original manifests (placeholders for next run)
 mv k8s/deployment.yaml.bak k8s/deployment.yaml
+mv k8s/serviceaccount.yaml.bak k8s/serviceaccount.yaml
+mv k8s/secretproviderclass.yaml.bak k8s/secretproviderclass.yaml
 
 echo "🎉 Deployment completed successfully!"
 echo ""

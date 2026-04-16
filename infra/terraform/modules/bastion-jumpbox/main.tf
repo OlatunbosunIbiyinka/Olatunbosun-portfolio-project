@@ -168,16 +168,11 @@ resource "azurerm_linux_virtual_machine" "jumpbox" {
     version   = var.vm_os_image_version
   }
 
-  # Enterprise-grade: Azure AD login is the primary authentication method
-  # SSH key is only provided to satisfy Terraform validation when password auth is disabled
-  # Users access via: az ssh vm --name <vm-name> --resource-group <rg-name>
-  # Or via Azure Portal → Connect → SSH (uses Azure AD authentication)
-  dynamic "admin_ssh_key" {
-    for_each = var.jumpbox_ssh_public_key != null ? { provided = var.jumpbox_ssh_public_key } : {}
-    content {
-      username   = var.jumpbox_admin_username
-      public_key = admin_ssh_key.value
-    }
+  # Enterprise-grade: Azure AD login is the primary authentication method.
+  # Keep an SSH key block to satisfy VM validation when password auth is disabled.
+  admin_ssh_key {
+    username   = var.jumpbox_admin_username
+    public_key = var.jumpbox_ssh_public_key
   }
 
   # Password authentication (only used if SSH key is not provided)

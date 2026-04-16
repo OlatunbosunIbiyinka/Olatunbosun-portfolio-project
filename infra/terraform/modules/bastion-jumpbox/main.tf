@@ -173,10 +173,10 @@ resource "azurerm_linux_virtual_machine" "jumpbox" {
   # Users access via: az ssh vm --name <vm-name> --resource-group <rg-name>
   # Or via Azure Portal → Connect → SSH (uses Azure AD authentication)
   dynamic "admin_ssh_key" {
-    for_each = var.jumpbox_ssh_public_key != null ? { enabled = true } : {}
+    for_each = var.jumpbox_ssh_public_key != null ? { provided = var.jumpbox_ssh_public_key } : {}
     content {
       username   = var.jumpbox_admin_username
-      public_key = var.jumpbox_ssh_public_key
+      public_key = admin_ssh_key.value
     }
   }
 

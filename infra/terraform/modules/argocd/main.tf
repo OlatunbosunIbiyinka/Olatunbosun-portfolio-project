@@ -21,19 +21,13 @@ resource "kubernetes_namespace_v1" "argocd" {
   }
 }
 
-# Prepare Helm cache before plan/apply (runs during plan phase)
-# Terraform Helm provider has a bug: uses corrupted cache. This clears it and adds ArgoCD repo.
-data "external" "helm_cache_prepare" {
-  program = ["PowerShell", "-ExecutionPolicy", "Bypass", "-NoProfile", "-File", "${path.module}/prepare-helm-cache.ps1"]
-}
-
-# Install ArgoCD using Helm (repository mode - cache prepared by data.external above)
+# Install ArgoCD using Helm — use explicit repository URL so plan/apply does not depend on
+# a pre-populated local Helm cache (helm repo add / argoproj-index.yaml).
 resource "helm_release" "argocd" {
   name       = "argocd"
-  chart   = "argoproj/argo-cd"
-  version = var.argocd_version != "latest" ? var.argocd_version : null
-  # Depends on data.external so cache is prepared before chart resolution
-  repository = lookup(data.external.helm_cache_prepare.result, "result", "") == "ok" ? "" : ""
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  version    = var.argocd_version != "latest" ? var.argocd_version : null
   namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
   
   force_update = true

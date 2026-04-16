@@ -115,9 +115,15 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].cluster_ca_certificate)
 }
 
-# Helm provider for ArgoCD installation
-# Helm provider automatically uses the Kubernetes provider configuration above
-# No explicit configuration needed - it will use the kubernetes provider settings
+# Helm provider must mirror Kubernetes credentials (Helm does not inherit the kubernetes provider block).
+provider "helm" {
+  kubernetes = {
+    host                   = data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].host
+    client_certificate     = base64decode(data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].client_certificate)
+    client_key             = base64decode(data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].client_key)
+    cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].cluster_ca_certificate)
+  }
+}
 
 # ArgoCD GitOps Configuration
 # Enterprise-grade: GitOps with ArgoCD - cluster manages itself via Git
@@ -267,10 +273,10 @@ resource "azurerm_role_assignment" "workload_identity_keyvault_secrets_user" {
 resource "azurerm_federated_identity_credential" "workload_identity" {
   depends_on = [module.aks, azurerm_user_assigned_identity.workload_identity]
   name       = "${var.aks_name}-federated-credential"
-  # Note: resource_group_name is deprecated and no longer needed - inferred from parent_id
+  # Note: resource_group_name is deprecated and no longer needed.
   audience  = ["api://AzureADTokenExchange"]
   issuer    = module.aks.oidc_issuer_url
-  parent_id = azurerm_user_assigned_identity.workload_identity.id
+  user_assigned_identity_id = azurerm_user_assigned_identity.workload_identity.id
   subject   = "system:serviceaccount:${var.k8s_namespace}:${var.workload_identity_service_account_name}"
 }
 

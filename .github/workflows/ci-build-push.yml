@@ -1,12 +1,15 @@
 name: CI - Build and Push Images
 
-# Builds and pushes to ACR only. Argo CD deploys from gitops/ (no cluster access from CI).
+# Builds and pushes to ACR from the VNet self-hosted runner (private ACR).
+# Authenticates via GitHub OIDC — no long-lived Azure credentials in the repo.
+# Argo CD deploys from gitops/ (no cluster access from CI).
 
 on:
   push:
     branches:
       - main
       - develop
+      - wip/deploy-vm-sync
     paths:
       - 'app/**'
       - '.github/workflows/ci-build-push.yml'
@@ -14,8 +17,10 @@ on:
     branches:
       - main
       - develop
+      - wip/deploy-vm-sync
     paths:
       - 'app/**'
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: ola-portfolio-app
@@ -28,8 +33,8 @@ env:
 jobs:
   build-and-push:
     name: Build and Push Docker Image
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: self-hosted
     permissions:
       id-token: write
       contents: read
@@ -37,6 +42,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Verify Docker is available
+        run: |
+          docker version
+          test -f app/Dockerfile
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -59,8 +69,8 @@ jobs:
           docker push "$IMAGE_LATEST"
 
           echo "image_sha=$IMAGE_SHA" >> "$GITHUB_OUTPUT"
-          echo "✅ Pushed $IMAGE_SHA and $IMAGE_LATEST"
-          echo "Update gitops/apps/portfolio-app/deployment.yaml or rely on :latest for Argo CD sync"
+          echo "Pushed $IMAGE_SHA and $IMAGE_LATEST"
+          echo "Argo CD syncs :latest from gitops/apps/portfolio-app/deployment.yaml"
 
       - name: Save image tag for security scan
         run: echo "${{ steps.build.outputs.image_sha }}" > image-tag.txt

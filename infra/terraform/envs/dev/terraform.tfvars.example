@@ -93,6 +93,8 @@ enable_bastion = false  # Set to true to enable Bastion + Jumpbox (recommended f
 # jumpbox_vm_name = "aks-jumpbox"
 # jumpbox_vm_size = "Standard_B2s"  # Sufficient for kubectl operations
 # jumpbox_admin_username = "azureuser"
+# github_repository_url = "https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project"
+# jumpbox_install_github_runner = false  # or: ./scripts/install-github-runner.sh on the VM
 # jumpbox_ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC..."  # Your SSH public key (recommended)
 # bastion_sku = "Standard"  # Standard recommended (supports copy/paste, IP connect, tunneling)
 
@@ -118,14 +120,14 @@ github_repository  = "OlatunbosunIbiyinka/Olatunbosun-portfolio-project"  # Form
 github_branch      = "main"
 github_oidc_app_name = "github-actions-oidc"
 github_oidc_credential_name = "github-actions-federated-credential"
-# Optional: Additional subjects for environments or pull requests
+# Federated credentials for CI branches and PRs (terraform apply after changing)
 github_oidc_additional_subjects = [
-  # "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:pull_request",
-  # "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:environment:production"
+  "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:ref:refs/heads/wip/deploy-vm-sync",
+  "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:ref:refs/heads/develop",
+  "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:pull_request",
 ]
-# Enterprise-grade: Use Reader instead of Contributor (least privilege)
-# Specific service roles (AcrPush, AKS Cluster User) are granted separately
-github_oidc_role_assignments = ["Reader"]  # Least privilege: Read-only access to resource group
+# Reader on RG + AcrPush on ACR (module.github_oidc enable_acr_push = true)
+github_oidc_role_assignments = ["Reader"]
 
 # Tags - Development Environment (NOT production)
 tags = {

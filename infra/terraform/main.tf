@@ -18,7 +18,6 @@ terraform {
     }
     helm = {
       source  = "hashicorp/helm"
-      # Helm provider v3 removed the nested `kubernetes { ... }` block; pin v2 for this config.
       version = ">= 2.17.0, < 3.0.0"
     }
     null = {
@@ -91,74 +90,14 @@ module "vnet" {
   private_endpoint_subnet_name             = var.private_endpoint_subnet_name
   private_endpoint_subnet_address_prefixes = var.private_endpoint_subnet_address_prefixes
   enable_bastion                           = var.enable_bastion # Enable Bastion for Trusted Execution Zone
-  bastion_subnet_address_prefixes         = var.bastion_subnet_address_prefixes
-  jumpbox_subnet_name                     = "operations-subnet"
-  jumpbox_subnet_address_prefixes        = var.jumpbox_subnet_address_prefixes
+  bastion_subnet_address_prefixes          = var.bastion_subnet_address_prefixes
+  jumpbox_subnet_name                      = "operations-subnet"
+  jumpbox_subnet_address_prefixes          = var.jumpbox_subnet_address_prefixes
   enable_private_dns                       = var.enable_private_dns
   enable_nsg                               = var.enable_nsg
   enable_nat_gateway                       = var.enable_nat_gateway
   nat_gateway_zones                        = var.nat_gateway_zones
   tags                                     = var.tags
-}
-
-# Data source for AKS cluster credentials (used by Kubernetes/Helm providers for ArgoCD)
-data "azurerm_kubernetes_cluster" "aks_for_argocd" {
-  name                = var.aks_name
-  resource_group_name = azurerm_resource_group.rg.name
-  depends_on          = [module.aks]
-}
-
-# Kubernetes provider for ArgoCD installation
-provider "kubernetes" {
-  host                   = data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].host
-  cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].cluster_ca_certificate)
-
-  # AKS + Entra ID / Azure RBAC: static kubeconfig client certs are often rejected for normal users.
-  # Use kubelogin with the same flow as `kubelogin convert-kubeconfig -l azurecli`.
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "kubelogin"
-    args = [
-      "get-token",
-      "--login", "azurecli",
-      "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630",
-    ]
-  }
-}
-
-# Helm provider must mirror Kubernetes credentials (Helm does not inherit the kubernetes provider block).
-provider "helm" {
-  kubernetes {
-    host                   = data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].host
-    cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.aks_for_argocd.kube_config[0].cluster_ca_certificate)
-
-    exec {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "kubelogin"
-      args = [
-        "get-token",
-        "--login", "azurecli",
-        "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630",
-      ]
-    }
-  }
-}
-
-# ArgoCD GitOps Configuration
-# Enterprise-grade: GitOps with ArgoCD - cluster manages itself via Git
-# CI only pushes images, ArgoCD pulls manifests from Git repository
-module "argocd" {
-  count  = var.enable_argocd ? 1 : 0
-  source = "./modules/argocd"
-
-  aks_cluster_id      = module.aks.cluster_id
-  aks_cluster_name    = var.aks_name
-  resource_group_name = azurerm_resource_group.rg.name
-  namespace          = var.argocd_namespace
-  argocd_version     = var.argocd_version
-  tags               = var.tags
-  
-  depends_on = [module.aks]
 }
 
 # Log Analytics Workspace for monitoring
@@ -212,13 +151,13 @@ module "keyvault" {
 
 # Azure Kubernetes Service
 module "aks" {
-  source                            = "./modules/aks"
-  aks_name                          = var.aks_name
-  location                          = var.location
-  resource_group_name               = azurerm_resource_group.rg.name
-  acr_id                            = module.acr.acr_id
-  vnet_subnet_id                    = module.vnet.aks_subnet_id # Attach AKS to VNet subnet
-  
+  source              = "./modules/aks"
+  aks_name            = var.aks_name
+  location            = var.location
+  resource_group_name = azurerm_resource_group.rg.name
+  acr_id              = module.acr.acr_id
+  vnet_subnet_id      = module.vnet.aks_subnet_id # Attach AKS to VNet subnet
+
   # CRITICAL: Ensure route table is associated with subnet BEFORE AKS cluster creation
   # Required when using userDefinedRouting with NAT Gateway
   # This prevents "ExistingRouteTableNotAssociatedWithSubnet" error
@@ -228,16 +167,16 @@ module "aks" {
   # Outbound configuration:
   # - When NAT Gateway is enabled (enterprise-grade): use userDefinedRouting for predictable egress IPs
   # - When NAT Gateway is disabled (dev simplification): fall back to loadBalancer for simpler, more resilient outbound during bootstrap
-  outbound_type                      = var.enable_nat_gateway ? "userDefinedRouting" : "loadBalancer"
-  kubernetes_version                = var.kubernetes_version
-  enable_log_analytics              = var.enable_log_analytics
-  log_analytics_workspace_id        = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
-  oidc_issuer_enabled               = true
-  workload_identity_enabled         = true
-  azure_policy_enabled              = var.enable_azure_policy
-  local_account_disabled            = var.disable_local_accounts
+  outbound_type              = var.enable_nat_gateway ? "userDefinedRouting" : "loadBalancer"
+  kubernetes_version         = var.kubernetes_version
+  enable_log_analytics       = var.enable_log_analytics
+  log_analytics_workspace_id = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
+  oidc_issuer_enabled        = true
+  workload_identity_enabled  = true
+  azure_policy_enabled       = var.enable_azure_policy
+  local_account_disabled     = var.disable_local_accounts
   # Production-Grade: Use group names (looked up via data sources) or fallback to Object IDs
-  admin_group_object_ids            = concat(
+  admin_group_object_ids = concat(
     # Lookup groups by name (preferred - production-grade)
     length(var.admin_group_names) > 0 ? [for group in data.azuread_group.aks_cluster_admins : group.object_id] : [],
     # Fallback to Object IDs for backward compatibility
@@ -269,6 +208,79 @@ module "aks" {
   tags                                         = var.tags
 }
 
+# Argo CD (optional). Kube providers use module.aks kube_config when the cluster exists in state so refresh
+# works even if enable_argocd=false (e.g. tearing down or stale argocd state). Dummy host only when AKS
+# is not in state yet (fresh plan after full destroy). enable_argocd still gates module.argocd only.
+locals {
+  argocd_kube_host_raw = try(module.aks.kube_config_host, "")
+  argocd_kube_ca_b64   = try(module.aks.kube_config_cluster_ca_certificate, "")
+  argocd_has_cluster   = length(compact([local.argocd_kube_host_raw])) > 0
+
+  argocd_provider_host = local.argocd_has_cluster ? local.argocd_kube_host_raw : "https://127.0.0.1:443"
+  argocd_provider_ca   = local.argocd_has_cluster ? base64decode(local.argocd_kube_ca_b64) : ""
+  argocd_insecure      = !local.argocd_has_cluster
+}
+
+provider "kubernetes" {
+  host                   = local.argocd_provider_host
+  cluster_ca_certificate = local.argocd_provider_ca
+  insecure               = local.argocd_insecure
+
+  dynamic "exec" {
+    for_each = local.argocd_has_cluster ? [1] : []
+    content {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "kubelogin"
+      args = [
+        "get-token",
+        "--login", "azurecli",
+        "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630",
+      ]
+      env = {
+        KUBECONFIG = ""
+      }
+    }
+  }
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = local.argocd_provider_host
+    cluster_ca_certificate = local.argocd_provider_ca
+    insecure               = local.argocd_insecure
+
+    dynamic "exec" {
+      for_each = local.argocd_has_cluster ? [1] : []
+      content {
+        api_version = "client.authentication.k8s.io/v1beta1"
+        command     = "kubelogin"
+        args = [
+          "get-token",
+          "--login", "azurecli",
+          "--server-id", "6dae42f8-4368-4678-94ff-3960e28e3630",
+        ]
+        env = {
+          KUBECONFIG = ""
+        }
+      }
+    }
+  }
+}
+
+module "argocd" {
+  count  = var.enable_argocd ? 1 : 0
+  source = "./modules/argocd"
+
+  aks_cluster_id      = module.aks.cluster_id
+  aks_cluster_name    = var.aks_name
+  resource_group_name = azurerm_resource_group.rg.name
+  namespace           = var.argocd_namespace
+  argocd_version      = var.argocd_version
+  tags                = var.tags
+
+  depends_on = [module.aks]
+}
+
 # User-assigned managed identity for Workload Identity (for pod-level access)
 # Note: AKS cluster identity does NOT need direct Key Vault access (least privilege)
 # Only the Workload Identity (below) needs access for pods to retrieve secrets
@@ -293,10 +305,10 @@ resource "azurerm_federated_identity_credential" "workload_identity" {
   depends_on = [module.aks, azurerm_user_assigned_identity.workload_identity]
   name       = "${var.aks_name}-federated-credential"
   # Note: resource_group_name is deprecated and no longer needed.
-  audience  = ["api://AzureADTokenExchange"]
-  issuer    = module.aks.oidc_issuer_url
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = module.aks.oidc_issuer_url
   user_assigned_identity_id = azurerm_user_assigned_identity.workload_identity.id
-  subject   = "system:serviceaccount:${var.k8s_namespace}:${var.workload_identity_service_account_name}"
+  subject                   = "system:serviceaccount:${var.k8s_namespace}:${var.workload_identity_service_account_name}"
 }
 
 # Azure RBAC role assignments for AKS cluster access (when Azure RBAC is enabled)
@@ -357,9 +369,9 @@ module "github_oidc" {
   enable_acr_push           = true # Push images for CI/CD (GitOps: CI only pushes, ArgoCD deploys)
   # GitOps Architecture: CI does NOT access AKS cluster
   # ArgoCD in-cluster manages deployments by pulling manifests from Git
-  aks_id                    = null
-  enable_aks_access         = false # Enterprise-grade GitOps: No CI access to cluster
-  tags                      = var.tags
+  aks_id            = null
+  enable_aks_access = false # Enterprise-grade GitOps: No CI access to cluster
+  tags              = var.tags
 }
 
 # Trusted Execution Zone - Operations VM
@@ -386,32 +398,32 @@ module "bastion_jumpbox" {
   jumpbox_subnet_id   = module.vnet.jumpbox_subnet_id
 
   # VM Configuration
-  jumpbox_vm_name         = var.jumpbox_vm_name
-  jumpbox_vm_size         = var.jumpbox_vm_size
-  jumpbox_admin_username  = var.jumpbox_admin_username
-  jumpbox_ssh_public_key  = var.jumpbox_ssh_public_key
+  jumpbox_vm_name        = var.jumpbox_vm_name
+  jumpbox_vm_size        = var.jumpbox_vm_size
+  jumpbox_admin_username = var.jumpbox_admin_username
+  jumpbox_ssh_public_key = var.jumpbox_ssh_public_key
 
   # Bastion Configuration
-  bastion_name            = "${var.resource_group_name}-bastion"
-  bastion_sku             = var.bastion_sku
-  enable_copy_paste       = var.enable_bastion_copy_paste
-  enable_ip_connect       = var.enable_bastion_ip_connect
-  enable_shareable_link   = var.enable_bastion_shareable_link
-  enable_tunneling        = var.enable_bastion_tunneling
+  bastion_name          = "${var.resource_group_name}-bastion"
+  bastion_sku           = var.bastion_sku
+  enable_copy_paste     = var.enable_bastion_copy_paste
+  enable_ip_connect     = var.enable_bastion_ip_connect
+  enable_shareable_link = var.enable_bastion_shareable_link
+  enable_tunneling      = var.enable_bastion_tunneling
 
   # Trusted Execution Zone Configuration
   # Role assignments for Managed Identity
-  aks_cluster_id          = module.aks.cluster_id
-  acr_id                  = module.acr.acr_id
-  key_vault_id            = module.keyvault.key_vault_id
-  resource_group_id       = azurerm_resource_group.rg.id
+  aks_cluster_id    = module.aks.cluster_id
+  acr_id            = module.acr.acr_id
+  key_vault_id      = module.keyvault.key_vault_id
+  resource_group_id = azurerm_resource_group.rg.id
 
   # Optional: Monitoring
   log_analytics_workspace_id = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
 
   # Optional: GitHub Actions Runner
   github_repository_url = var.github_repository_url
-  github_runner_token  = var.github_runner_token
+  github_runner_token   = var.github_runner_token
 
   # Optional: Disk encryption (if you have a disk encryption set)
   disk_encryption_set_id = null
@@ -422,10 +434,10 @@ module "bastion_jumpbox" {
   vm_user_login_principal_ids  = var.vm_user_login_principal_ids
 
   # Tool Versions (Best Practice: Parameterized for version control)
-  kubelogin_version  = var.jumpbox_kubelogin_version
-  terraform_version   = var.jumpbox_terraform_version
+  kubelogin_version     = var.jumpbox_kubelogin_version
+  terraform_version     = var.jumpbox_terraform_version
   github_runner_version = var.jumpbox_github_runner_version
-  nodejs_version      = var.jumpbox_nodejs_version
+  nodejs_version        = var.jumpbox_nodejs_version
 
   # OS Image Configuration (Best Practice: Parameterized for flexibility)
   vm_os_image_publisher = var.jumpbox_os_image_publisher

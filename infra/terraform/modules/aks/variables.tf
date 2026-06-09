@@ -97,13 +97,13 @@ variable "outbound_type" {
 variable "service_cidr" {
   description = "CIDR for Kubernetes services. Must NOT overlap with VNet subnets. Default: 10.1.0.0/16 (non-overlapping with common VNet ranges)"
   type        = string
-  default     = "10.1.0.0/16"  # Changed from 10.0.0.0/16 to avoid overlap with VNet subnets
+  default     = "10.1.0.0/16" # Changed from 10.0.0.0/16 to avoid overlap with VNet subnets
 }
 
 variable "dns_service_ip" {
   description = "DNS service IP (must be within service CIDR). Updated to match new service_cidr default (10.1.0.0/16)"
   type        = string
-  default     = "10.1.0.10"  # Updated to match new service_cidr (10.1.0.0/16)
+  default     = "10.1.0.10" # Updated to match new service_cidr (10.1.0.0/16)
 }
 
 variable "default_node_pool_name" {

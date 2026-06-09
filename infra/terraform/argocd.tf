@@ -1,19 +1,19 @@
-# ArgoCD GitOps variables (root module)
-# Kept in a dedicated file so Phase 2 from the VM gets them on git pull
+# Argo CD: set enable_argocd=false for routine plan/apply (core infra only). On the operations VM,
+# after AKS is up, set enable_argocd=true (or -var) and apply -target=module.argocd if you want only GitOps.
 variable "enable_argocd" {
-  description = "Enable ArgoCD for GitOps deployments. Enterprise-grade: Cluster manages itself via Git, CI only pushes images."
+  description = "Install Argo CD in-cluster. Recommended false until AKS exists; enable from the VM for private API access."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "argocd_namespace" {
-  description = "Kubernetes namespace for ArgoCD installation"
+  description = "Kubernetes namespace for Argo CD."
   type        = string
   default     = "argocd"
 }
 
 variable "argocd_version" {
-  description = "ArgoCD version to install (use 'latest' for latest stable version)"
+  description = "argo-cd Helm chart version (use 'latest' for newest)."
   type        = string
   default     = "latest"
 }

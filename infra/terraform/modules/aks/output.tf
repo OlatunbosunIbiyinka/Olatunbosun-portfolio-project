@@ -42,3 +42,15 @@ output "cluster_kubernetes_version" {
   description = "Kubernetes version of the cluster"
   value       = azurerm_kubernetes_cluster.aks.kubernetes_version
 }
+
+# For root Kubernetes/Helm providers (Argo CD): use the same API server as the managed cluster resource.
+output "kube_config_host" {
+  description = "Kubernetes API server URL (kube_config host)"
+  value       = azurerm_kubernetes_cluster.aks.kube_config[0].host
+}
+
+output "kube_config_cluster_ca_certificate" {
+  description = "Base64-encoded cluster CA certificate for kube clients"
+  value       = azurerm_kubernetes_cluster.aks.kube_config[0].cluster_ca_certificate
+  sensitive   = true
+}

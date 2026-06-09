@@ -19,15 +19,15 @@ resource "azurerm_bastion_host" "bastion" {
 
   ip_configuration {
     name                 = "configuration"
-    subnet_id             = var.bastion_subnet_id
+    subnet_id            = var.bastion_subnet_id
     public_ip_address_id = azurerm_public_ip.bastion.id
   }
 
-  sku                = var.bastion_sku
-  copy_paste_enabled = var.enable_copy_paste
-  ip_connect_enabled = var.enable_ip_connect
+  sku                    = var.bastion_sku
+  copy_paste_enabled     = var.enable_copy_paste
+  ip_connect_enabled     = var.enable_ip_connect
   shareable_link_enabled = var.enable_shareable_link
-  tunneling_enabled  = var.enable_tunneling
+  tunneling_enabled      = var.enable_tunneling
 
   tags = var.tags
 }
@@ -87,11 +87,20 @@ resource "azurerm_subnet_network_security_group_association" "jumpbox" {
   network_security_group_id = azurerm_network_security_group.jumpbox.id
 }
 
+locals {
+  # Treat empty string like null so we never pass admin_ssh_key with a null/empty public_key (AzureRM requires a real key).
+  jumpbox_ssh_public_key_effective = (
+    var.jumpbox_ssh_public_key != null && trimspace(var.jumpbox_ssh_public_key) != ""
+    ? trimspace(var.jumpbox_ssh_public_key)
+    : null
+  )
+}
+
 # Random password for VM (only used if SSH key is not provided and password auth is enabled)
 # Note: For Azure AD login, this password won't be used once AAD extension is installed
 # It's only required to satisfy Terraform's validation during VM creation
 resource "random_password" "jumpbox_password" {
-  count   = var.jumpbox_ssh_public_key == null ? 1 : 0
+  count   = local.jumpbox_ssh_public_key_effective == null ? 1 : 0
   length  = 32
   special = true
   upper   = true
@@ -141,7 +150,7 @@ resource "azurerm_linux_virtual_machine" "jumpbox" {
   # Note: For Azure AD login, we disable password auth but Terraform requires at least one auth method
   # We'll use a minimal SSH key block that won't be used (Azure AD handles auth)
   # Alternatively, password auth can be enabled but won't be used once AAD extension is installed
-  disable_password_authentication = var.jumpbox_ssh_public_key != null ? true : false
+  disable_password_authentication = local.jumpbox_ssh_public_key_effective != null ? true : false
 
   network_interface_ids = [
     azurerm_network_interface.jumpbox.id,
@@ -168,17 +177,19 @@ resource "azurerm_linux_virtual_machine" "jumpbox" {
     version   = var.vm_os_image_version
   }
 
-  # Enterprise-grade: Azure AD login is the primary authentication method.
-  # Keep an SSH key block to satisfy VM validation when password auth is disabled.
-  admin_ssh_key {
-    username   = var.jumpbox_admin_username
-    public_key = var.jumpbox_ssh_public_key
+  # Only when a real SSH public key is set; with key = null Azure AD + generated password is used.
+  dynamic "admin_ssh_key" {
+    for_each = local.jumpbox_ssh_public_key_effective != null ? [1] : []
+    content {
+      username   = var.jumpbox_admin_username
+      public_key = local.jumpbox_ssh_public_key_effective
+    }
   }
 
   # Password authentication (only used if SSH key is not provided)
   # Note: This password won't be used once Azure AD extension is installed
   # It's only required to satisfy Terraform's validation during VM creation
-  admin_password = var.jumpbox_ssh_public_key == null ? random_password.jumpbox_password[0].result : null
+  admin_password = local.jumpbox_ssh_public_key_effective == null ? random_password.jumpbox_password[0].result : null
 
   # Enable boot diagnostics for troubleshooting
   boot_diagnostics {
@@ -189,11 +200,11 @@ resource "azurerm_linux_virtual_machine" "jumpbox" {
   patch_mode = "AutomaticByPlatform" # Automatic security updates
 
   tags = merge(var.tags, {
-    "Purpose"           = "TrustedExecutionZone"
-    "OperationsBox"     = "true"
-    "KubectlBox"        = "true"
+    "Purpose"             = "TrustedExecutionZone"
+    "OperationsBox"       = "true"
+    "KubectlBox"          = "true"
     "CICDExecutionEngine" = "true"
-    "AuthMethod"         = "AzureAD" # Indicates Azure AD login is used
+    "AuthMethod"          = "AzureAD" # Indicates Azure AD login is used
   })
 }
 

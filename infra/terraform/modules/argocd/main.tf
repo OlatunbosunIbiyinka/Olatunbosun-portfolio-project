@@ -2,12 +2,6 @@
 # Enterprise-grade: Deploys ArgoCD in-cluster for GitOps workflows
 # CI only pushes images, ArgoCD pulls manifests from Git
 
-# Data source to get AKS cluster credentials
-data "azurerm_kubernetes_cluster" "aks" {
-  name                = var.aks_cluster_name
-  resource_group_name = var.resource_group_name
-}
-
 # Create ArgoCD namespace
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
@@ -29,11 +23,11 @@ resource "helm_release" "argocd" {
   chart      = "argo-cd"
   version    = var.argocd_version != "latest" ? var.argocd_version : null
   namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
-  
+
   force_update = true
-  
+
   # Wait for resources to be ready
-  wait = true
+  wait    = true
   timeout = 600
 
   # Enterprise-grade: Security and production settings
@@ -45,7 +39,7 @@ resource "helm_release" "argocd" {
           "server.insecure" = false
         }
       }
-      
+
       # High availability for production
       controller = {
         replicas = 2
@@ -60,7 +54,7 @@ resource "helm_release" "argocd" {
           }
         }
       }
-      
+
       repoServer = {
         replicas = 2
         resources = {
@@ -74,7 +68,7 @@ resource "helm_release" "argocd" {
           }
         }
       }
-      
+
       server = {
         replicas = 2
         resources = {
@@ -88,20 +82,18 @@ resource "helm_release" "argocd" {
           }
         }
       }
-      
+
       # Application controller settings
       applicationSet = {
-        enabled = true
+        enabled  = true
         replicas = 2
       }
-      
-      # Redis HA for production
+
+      # Redis HA (Dandy redis-ha subchart): replicas must be a single int, not servers/sentinels maps.
+      # See https://github.com/DandyDeveloper/charts/blob/master/charts/redis-ha/values.yaml
       redis-ha = {
-        enabled = true
-        replicas = {
-          servers = 3
-          sentinels = 3
-        }
+        enabled  = true
+        replicas = 3
       }
     })
   ]

@@ -56,7 +56,7 @@ output "operations_vm_managed_identity_client_id" {
 
 output "connection_instructions" {
   description = "Instructions for connecting to the Trusted Execution Zone VM via Azure AD login"
-  value = <<-EOT
+  value       = <<-EOT
     ============================================
     Trusted Execution Zone - Operations VM
     ============================================

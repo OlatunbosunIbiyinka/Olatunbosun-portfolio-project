@@ -57,8 +57,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
     node_labels = merge(
       {
         "node.kubernetes.io/role" = "system"
-        "pool.type"               = "system"  # Custom label for system pool identification
-        "workload.type"           = "system"  # Additional label for workload scheduling
+        "pool.type"               = "system" # Custom label for system pool identification
+        "workload.type"           = "system" # Additional label for workload scheduling
       },
       var.node_labels
     )
@@ -153,10 +153,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # - Complex network routing scenarios
   timeouts {
     create = "240m" # Significantly increased for initial cluster creation with complex network setup
-                     # Initial creation with private cluster + NAT Gateway + Cilium can take 120-180+ minutes
-    update = "180m"  # Significantly increased for default node pool updates (can take 90-120+ minutes)
-    delete = "90m"   # Increased for cluster deletion
-    read   = "5m"    # Standard read timeout
+    # Initial creation with private cluster + NAT Gateway + Cilium can take 120-180+ minutes
+    update = "180m" # Significantly increased for default node pool updates (can take 90-120+ minutes)
+    delete = "90m"  # Increased for cluster deletion
+    read   = "5m"   # Standard read timeout
   }
 
   # Lifecycle: Ignore upgrade_settings changes on default node pool

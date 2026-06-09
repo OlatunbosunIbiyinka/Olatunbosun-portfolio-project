@@ -246,7 +246,7 @@ resource "azurerm_subnet_route_table_association" "aks_subnet" {
   count          = var.enable_nat_gateway ? 1 : 0
   subnet_id      = azurerm_subnet.aks_subnet.id
   route_table_id = azurerm_route_table.aks_subnet[0].id
-  
+
   # Ensure route table is associated before NAT Gateway
   depends_on = [azurerm_route_table.aks_subnet]
 }
@@ -258,7 +258,7 @@ resource "azurerm_subnet_nat_gateway_association" "aks_subnet" {
   count          = var.enable_nat_gateway ? 1 : 0
   subnet_id      = azurerm_subnet.aks_subnet.id
   nat_gateway_id = azurerm_nat_gateway.nat_gateway[0].id
-  
+
   # Ensure route table is associated first
   depends_on = [azurerm_subnet_route_table_association.aks_subnet]
 }

@@ -3,6 +3,11 @@ output "aks_cluster_name" {
   value       = module.aks.cluster_name
 }
 
+output "azure_subscription_id" {
+  description = "Subscription ID this stack uses (for argocd-stack / cross-stack alignment)"
+  value       = data.azurerm_client_config.current.subscription_id
+}
+
 output "resource_group_name" {
   description = "Name of the resource group"
   value       = azurerm_resource_group.rg.name
@@ -63,19 +68,18 @@ output "github_oidc_subscription_id" {
   value       = var.enable_github_oidc && var.github_repository != "" ? data.azurerm_client_config.current.subscription_id : null
 }
 
-# ArgoCD GitOps Outputs
 output "argocd_namespace" {
-  description = "Kubernetes namespace where ArgoCD is installed"
+  description = "Namespace where Argo CD is installed (null if enable_argocd=false)."
   value       = var.enable_argocd ? module.argocd[0].argocd_namespace : null
 }
 
 output "argocd_server_service_name" {
-  description = "Name of the ArgoCD server service"
+  description = "Argo CD server Service name (null if enable_argocd=false)."
   value       = var.enable_argocd ? module.argocd[0].argocd_server_service_name : null
 }
 
 output "argocd_helm_release_version" {
-  description = "Version of the ArgoCD Helm chart installed"
+  description = "Installed Helm chart version (null if enable_argocd=false)."
   value       = var.enable_argocd ? module.argocd[0].argocd_helm_release_version : null
 }
 

@@ -1,0 +1,72 @@
+name: CI - Build and Push Images
+
+# Builds and pushes to ACR only. Argo CD deploys from gitops/ (no cluster access from CI).
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci-build-push.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'app/**'
+
+env:
+  IMAGE_NAME: ola-portfolio-app
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ACR_NAME: ${{ secrets.ACR_NAME }}
+  RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push Docker image
+        id: build
+        run: |
+          ACR_LOGIN_SERVER=$(az acr show --name "${{ env.ACR_NAME }}" --resource-group "${{ env.RESOURCE_GROUP }}" --query loginServer -o tsv)
+          IMAGE_SHA="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          IMAGE_LATEST="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:latest"
+
+          docker build -t "$IMAGE_SHA" -t "$IMAGE_LATEST" ./app
+
+          az acr login --name "${{ env.ACR_NAME }}"
+          docker push "$IMAGE_SHA"
+          docker push "$IMAGE_LATEST"
+
+          echo "image_sha=$IMAGE_SHA" >> "$GITHUB_OUTPUT"
+          echo "✅ Pushed $IMAGE_SHA and $IMAGE_LATEST"
+          echo "Update gitops/apps/portfolio-app/deployment.yaml or rely on :latest for Argo CD sync"
+
+      - name: Save image tag for security scan
+        run: echo "${{ steps.build.outputs.image_sha }}" > image-tag.txt
+
+      - name: Upload image metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tag
+          path: image-tag.txt

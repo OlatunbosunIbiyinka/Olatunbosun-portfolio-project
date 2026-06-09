@@ -2,7 +2,7 @@ name: Security Scans
 
 on:
   workflow_run:
-    workflows: ["CI Pipeline"]
+    workflows: ["CI - Build and Push Images"]
     types: [completed]
   workflow_dispatch:
 
@@ -17,42 +17,35 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      REGISTRY: olaacr01.azurecr.io
+      ACR_NAME: ${{ secrets.ACR_NAME }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Debug workflow_run info
-        run: |
-          echo "Triggered by workflow: ${{ github.event.workflow_run.id }}"
-          echo "Repo: ${{ github.event.workflow_run.repository.full_name }}"
-          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
-
       - name: Download image tag artifact from CI
         uses: dawidd6/action-download-artifact@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: ci.yml
+          workflow: ci-build-push.yml
           run_id: ${{ github.event.workflow_run.id }}
           name: image-tag
           path: .
 
       - name: Read image tag
-        id: read-image
         run: |
           echo "IMAGE=$(cat image-tag.txt)" >> $GITHUB_ENV
           echo "Image from CI: $(cat image-tag.txt)"
 
       - name: Azure Login (OIDC)
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: az acr login --name olaacr01
+        run: az acr login --name "${{ env.ACR_NAME }}"
 
       - name: Trivy Vulnerability Scan (Image)
         uses: aquasecurity/trivy-action@master
@@ -69,4 +62,3 @@ jobs:
           framework: terraform
           soft_fail: false
           config_file: ./infra/checkov.suppressions.yaml
-          

@@ -26,6 +26,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   quality:
@@ -55,20 +56,17 @@ jobs:
         working-directory: ./app
         run: npm run build
 
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: ./app
         env:
           CI: true
-        run: npm test -- --watchAll=false --passWithNoTests
+        run: npm test -- --coverage --watchAll=false --passWithNoTests
 
       - name: SonarCloud Scan
         if: env.SONAR_TOKEN != ''
-        continue-on-error: true
         uses: SonarSource/sonarcloud-github-action@v2.1.1
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: ./app
-          args: >
-            -Dsonar.organization=olatunbosunibiyinka
-            -Dsonar.projectKey=OlatunbosunIbiyinka_Olatunbosun-portfolio-project

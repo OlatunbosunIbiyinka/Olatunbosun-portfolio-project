@@ -315,6 +315,24 @@ variable "github_oidc_role_assignments" {
   default     = ["Reader"] # Enterprise-grade: Least privilege (was Contributor)
 }
 
+variable "enable_github_oidc_tfstate_access" {
+  description = "Grant GitHub OIDC SP Storage Blob Data Contributor on the remote state storage account (required for terraform plan in CI)"
+  type        = bool
+  default     = true
+}
+
+variable "tfstate_resource_group_name" {
+  description = "Resource group containing the Terraform remote state storage account (bootstrap stack)"
+  type        = string
+  default     = "tfstate-rg"
+}
+
+variable "tfstate_storage_account_name" {
+  description = "Storage account name for Terraform remote state (must match backend.tf)"
+  type        = string
+  default     = "olaportfolio001"
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

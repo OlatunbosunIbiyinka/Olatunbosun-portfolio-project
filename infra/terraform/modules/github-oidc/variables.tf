@@ -68,6 +68,18 @@ variable "enable_aks_access" {
   default     = false
 }
 
+variable "tfstate_storage_account_id" {
+  description = "Terraform remote state storage account resource ID (for CI terraform plan via OIDC)"
+  type        = string
+  default     = null
+}
+
+variable "enable_tfstate_access" {
+  description = "Grant Storage Blob Data Contributor on the tfstate storage account for GitHub Actions OIDC"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

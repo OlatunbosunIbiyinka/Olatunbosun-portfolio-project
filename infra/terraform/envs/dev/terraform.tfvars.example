@@ -127,6 +127,10 @@ github_oidc_additional_subjects = [
 ]
 # Reader on RG + AcrPush on ACR (module.github_oidc enable_acr_push = true)
 github_oidc_role_assignments = ["Reader"]
+# Storage Blob Data Contributor on tfstate account (terraform plan in CI via OIDC)
+enable_github_oidc_tfstate_access = true
+tfstate_resource_group_name       = "tfstate-rg"
+tfstate_storage_account_name      = "olaportfolio001"
 
 # Tags - Development Environment (NOT production)
 tags = {

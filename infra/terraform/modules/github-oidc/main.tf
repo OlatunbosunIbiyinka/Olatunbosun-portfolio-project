@@ -91,3 +91,12 @@ resource "azurerm_role_assignment" "aks_contributor" {
   role_definition_name = "Azure Kubernetes Service Cluster User Role"
   principal_id         = azuread_service_principal.github_actions.object_id
 }
+
+# Optional: Grant remote state storage access for terraform plan in GitHub Actions CI
+resource "azurerm_role_assignment" "tfstate_blob_contributor" {
+  count = var.enable_tfstate_access && var.tfstate_storage_account_id != null ? 1 : 0
+
+  scope                = var.tfstate_storage_account_id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azuread_service_principal.github_actions.object_id
+}

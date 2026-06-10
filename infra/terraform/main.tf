@@ -55,6 +55,14 @@ provider "azuread" {
 
 data "azurerm_client_config" "current" {}
 
+# Bootstrap tfstate storage (created outside this stack; referenced for GitHub OIDC CI access)
+data "azurerm_storage_account" "tfstate" {
+  count = var.enable_github_oidc && var.enable_github_oidc_tfstate_access && var.github_repository != "" ? 1 : 0
+
+  name                = var.tfstate_storage_account_name
+  resource_group_name = var.tfstate_resource_group_name
+}
+
 # Azure AD Group Data Sources (Production-Grade: Lookup by name instead of hardcoding Object IDs)
 # This allows groups to be referenced by name, making configuration more maintainable
 data "azuread_group" "aks_cluster_admins" {
@@ -369,9 +377,11 @@ module "github_oidc" {
   enable_acr_push           = true # Push images for CI/CD (GitOps: CI only pushes, ArgoCD deploys)
   # GitOps Architecture: CI does NOT access AKS cluster
   # ArgoCD in-cluster manages deployments by pulling manifests from Git
-  aks_id            = null
-  enable_aks_access = false # Enterprise-grade GitOps: No CI access to cluster
-  tags              = var.tags
+  aks_id                     = null
+  enable_aks_access          = false # Enterprise-grade GitOps: No CI access to cluster
+  enable_tfstate_access      = var.enable_github_oidc_tfstate_access
+  tfstate_storage_account_id = var.enable_github_oidc_tfstate_access ? data.azurerm_storage_account.tfstate[0].id : null
+  tags                       = var.tags
 }
 
 # Trusted Execution Zone - Operations VM

@@ -156,13 +156,16 @@ jobs:
           echo "Switching Azure CLI to ops VM managed identity for kubectl..."
           az logout 2>/dev/null || true
           az login --identity --client-id "$VM_CLIENT_ID"
-          rm -rf "${HOME}/.kube/cache" 2>/dev/null || true
+          export KUBECONFIG="${RUNNER_TEMP}/kubeconfig-smoke"
+          rm -f "$KUBECONFIG"
           az aks get-credentials \
             --resource-group "${{ env.RESOURCE_GROUP }}" \
             --name "${{ env.AKS_NAME }}" \
+            --file "$KUBECONFIG" \
             --overwrite-existing
+          kubelogin convert-kubeconfig -l azurecli --kubeconfig "$KUBECONFIG"
 
-          kubectl get nodes --request-timeout=30s >/dev/null
+          kubectl get deployment "$DEP" -n "$NS" --request-timeout=30s >/dev/null
 
           echo "Waiting for GitOps/Argo CD to roll out image containing ${EXPECTED_SHA}..."
           while [ "$SECONDS" -lt "$DEADLINE" ]; do

@@ -21,3 +21,7 @@ skip-check:
   - CKV_AZURE_117
   - CKV_AZURE_172
   - CKV_AZURE_116
+  # Dev portfolio: ops VM extensions (Phase 1/2 bootstrap), OIDC branch subjects, subnet NSG associations via separate resources
+  - CKV_AZURE_50
+  - CKV_AZURE_249
+  - CKV2_AZURE_31

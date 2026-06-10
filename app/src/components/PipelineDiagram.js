@@ -36,13 +36,6 @@ const PipelineDiagram = () => {
     }
   ];
 
-  const connections = [
-    { from: 'cicd', to: 'iac', type: 'horizontal' },
-    { from: 'cicd', to: 'kubernetes', type: 'vertical' },
-    { from: 'iac', to: 'monitoring', type: 'vertical' },
-    { from: 'kubernetes', to: 'monitoring', type: 'horizontal' }
-  ];
-
   return (
     <section id="pipeline" className="section-padding bg-gradient-to-b from-transparent via-navy/30 to-transparent">
       <div className="container">

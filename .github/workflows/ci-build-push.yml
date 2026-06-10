@@ -103,7 +103,7 @@ jobs:
           echo "Built $IMAGE_SHA"
 
       - name: Trivy vulnerability scan (gate)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: ${{ steps.build.outputs.image_sha }}
           format: table

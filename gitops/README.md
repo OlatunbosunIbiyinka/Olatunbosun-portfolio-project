@@ -90,11 +90,14 @@ kubectl apply -f gitops/apps/portfolio-app.yaml
 
 ### 4. CI/CD Workflow
 
-When you push code to `main` branch:
-1. GitHub Actions builds and pushes image to ACR
-2. Update image tag in `gitops/apps/portfolio-app/deployment.yaml`
-3. Commit and push the change
-4. ArgoCD detects the change and deploys automatically
+When you push application code to `main` (or `develop`):
+
+1. **CI - Quality** (`ci.yml`) — lint, build, test, SonarCloud (GitHub-hosted)
+2. **CI - Build and Push** (`ci-build-push.yml`) — Buildx build, Trivy gate, push immutable SHA to ACR (self-hosted runner)
+3. CI commits the SHA tag to `gitops/apps/portfolio-app/deployment.yaml`
+4. Argo CD detects the Git change and deploys automatically
+
+**Security gates:** Trivy (CRITICAL/HIGH) blocks image push; Checkov runs on `infra/**` changes via `terraform.yml`.
 
 ## Benefits
 
@@ -109,13 +112,15 @@ When you push code to `main` branch:
 
 ### Update Image Tag
 
-```bash
-# After CI pushes new image, update the tag
-sed -i 's|image:.*ola-portfolio-app:.*|image: olaacr01dev.azurecr.io/ola-portfolio-app:NEW_TAG|' gitops/apps/portfolio-app/deployment.yaml
+After CI pushes a new image, the GitOps manifest is updated automatically with the commit SHA.
+To deploy a specific version manually:
 
-# Commit and push
+```bash
+# Update to a known good SHA from ACR
+sed -i 's|image:.*ola-portfolio-app:.*|image: olaacr01dev.azurecr.io/ola-portfolio-app:COMMIT_SHA|' gitops/apps/portfolio-app/deployment.yaml
+
 git add gitops/apps/portfolio-app/deployment.yaml
-git commit -m "Update ola-portfolio-app to NEW_TAG"
+git commit -m "chore(gitops): deploy ola-portfolio-app@COMMIT_SHA"
 git push
 ```
 

@@ -122,7 +122,6 @@ github_oidc_app_name = "github-actions-oidc"
 github_oidc_credential_name = "github-actions-federated-credential"
 # Federated credentials for CI branches and PRs (terraform apply after changing)
 github_oidc_additional_subjects = [
-  "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:ref:refs/heads/wip/deploy-vm-sync",
   "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:ref:refs/heads/develop",
   "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:pull_request",
 ]

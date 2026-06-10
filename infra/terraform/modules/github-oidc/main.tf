@@ -40,7 +40,7 @@ resource "azuread_application_federated_identity_credential" "github_actions_add
   for_each = toset(var.additional_subjects)
 
   application_id = azuread_application.github_actions.id
-  display_name   = "${var.federated_credential_name}-${replace(each.value, ":", "-")}"
+  display_name   = "${var.federated_credential_name}-${substr(md5(each.value), 0, 8)}"
   description    = "Federated credential for GitHub Actions OIDC - ${each.value}"
 
   audiences = ["api://AzureADTokenExchange"]

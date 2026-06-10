@@ -1,26 +1,44 @@
 name: CI - Quality
 
-# Lint, test, and SonarCloud only. Images are built by ci-build-push.yml; deploys via Argo CD.
+# Code quality gate (GitHub-hosted). Runs on PRs and pushes before/at merge.
+# Build and deploy are handled by ci-build-push.yml + Argo CD GitOps.
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci.yml'
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   quality:
+    name: Lint, Test, and SonarCloud
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.2.0
         with:
           node-version: 18
           cache: npm
@@ -28,14 +46,24 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./app
-        run: npm ci
+        run: npm ci --legacy-peer-deps
+
+      - name: Build application
+        working-directory: ./app
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./app
+        env:
+          CI: true
+        run: npm test -- --watchAll=false --passWithNoTests
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
+        uses: SonarSource/sonarcloud-github-action@v2.1.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: ./app
           args: >
             -Dsonar.organization=olatunbosunibiyinka
             -Dsonar.projectKey=OlatunbosunIbiyinka_Olatunbosun-portfolio-project
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

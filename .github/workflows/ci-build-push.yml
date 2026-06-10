@@ -1,26 +1,26 @@
 name: CI - Build and Push Images
 
-# Builds and pushes to ACR from the VNet self-hosted runner (private ACR).
-# Authenticates via GitHub OIDC — no long-lived Azure credentials in the repo.
-# Argo CD deploys from gitops/ (no cluster access from CI).
+# Unified release pipeline (self-hosted runner, private ACR, GitHub OIDC).
+#
+# Flow: checkout → build (Buildx + ACR cache) → Trivy gate → push SHA tag
+#       → update GitOps manifest → commit to same branch
+# Argo CD watches gitops/ on main and deploys the immutable SHA tag.
+#
+# Triggers only on app/ changes — GitOps commits do not re-trigger this workflow.
 
 on:
   push:
     branches:
       - main
       - develop
-      - wip/deploy-vm-sync
     paths:
       - 'app/**'
       - '.github/workflows/ci-build-push.yml'
-  pull_request:
-    branches:
-      - main
-      - develop
-      - wip/deploy-vm-sync
-    paths:
-      - 'app/**'
   workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   IMAGE_NAME: ola-portfolio-app
@@ -31,52 +31,106 @@ env:
   RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
 
 jobs:
-  build-and-push:
-    name: Build and Push Docker Image
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+  build-scan-push:
+    name: Build, Scan, Push, and Update GitOps
     runs-on: self-hosted
     permissions:
       id-token: write
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
 
-      - name: Verify Docker is available
+      - name: Verify Docker and Dockerfile
         run: |
           docker version
+          docker buildx version
           test -f app/Dockerfile
 
+      - name: Setup Docker Buildx
+        run: |
+          if ! docker buildx inspect portfolio-builder >/dev/null 2>&1; then
+            docker buildx create --name portfolio-builder --use
+          else
+            docker buildx use portfolio-builder
+          fi
+          docker buildx inspect --bootstrap
+
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v2.2.0
         with:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push Docker image
-        id: build
+      - name: Login to ACR
+        id: acr
         run: |
-          ACR_LOGIN_SERVER=$(az acr show --name "${{ env.ACR_NAME }}" --resource-group "${{ env.RESOURCE_GROUP }}" --query loginServer -o tsv)
+          ACR_LOGIN_SERVER=$(az acr show \
+            --name "${{ env.ACR_NAME }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query loginServer -o tsv)
+          TOKEN=$(az acr login \
+            --name "${{ env.ACR_NAME }}" \
+            --expose-token \
+            --output tsv \
+            --query accessToken)
+          echo "$TOKEN" | docker login "$ACR_LOGIN_SERVER" \
+            -u 00000000-0000-0000-0000-000000000000 \
+            --password-stdin
+          echo "login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Build image (Buildx + registry cache)
+        id: build
+        env:
+          ACR_LOGIN_SERVER: ${{ steps.acr.outputs.login_server }}
+        run: |
           IMAGE_SHA="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          IMAGE_LATEST="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:latest"
+          CACHE_REF="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:buildcache"
 
-          docker build -t "$IMAGE_SHA" -t "$IMAGE_LATEST" ./app
-
-          az acr login --name "${{ env.ACR_NAME }}"
-          docker push "$IMAGE_SHA"
-          docker push "$IMAGE_LATEST"
+          docker buildx build \
+            --cache-from "type=registry,ref=${CACHE_REF}" \
+            --cache-to "type=registry,ref=${CACHE_REF},mode=max" \
+            --load \
+            -t "$IMAGE_SHA" \
+            -f app/Dockerfile \
+            ./app
 
           echo "image_sha=$IMAGE_SHA" >> "$GITHUB_OUTPUT"
-          echo "Pushed $IMAGE_SHA and $IMAGE_LATEST"
-          echo "Argo CD syncs :latest from gitops/apps/portfolio-app/deployment.yaml"
+          echo "Built $IMAGE_SHA"
 
-      - name: Save image tag for security scan
-        run: echo "${{ steps.build.outputs.image_sha }}" > image-tag.txt
-
-      - name: Upload image metadata
-        uses: actions/upload-artifact@v4
+      - name: Trivy vulnerability scan (gate)
+        uses: aquasecurity/trivy-action@0.28.0
         with:
-          name: image-tag
-          path: image-tag.txt
+          image-ref: ${{ steps.build.outputs.image_sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Push image to ACR
+        run: docker push "${{ steps.build.outputs.image_sha }}"
+
+      - name: Update GitOps deployment manifest
+        env:
+          ACR_LOGIN_SERVER: ${{ steps.acr.outputs.login_server }}
+        run: |
+          FILE=gitops/apps/portfolio-app/deployment.yaml
+          IMAGE="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          sed -i "s|image: .*${{ env.IMAGE_NAME }}:.*|image: ${IMAGE}|" "$FILE"
+          grep "image:" "$FILE"
+
+      - name: Commit and push GitOps update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gitops/apps/portfolio-app/deployment.yaml
+          if git diff --staged --quiet; then
+            echo "GitOps manifest already at ${{ github.sha }}"
+          else
+            git commit -m "chore(gitops): deploy ola-portfolio-app@${{ github.sha }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

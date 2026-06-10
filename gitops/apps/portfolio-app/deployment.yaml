@@ -1,0 +1,76 @@
+# Portfolio Application Deployment
+# Managed by Argo CD. Image repository must match CI (ola-portfolio-app).
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ola-portfolio-app
+  namespace: portfolio-app
+  labels:
+    app: ola-portfolio-app
+    managed-by: argocd
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ola-portfolio-app
+  template:
+    metadata:
+      labels:
+        app: ola-portfolio-app
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          key: workload
+          operator: Equal
+          value: application
+      containers:
+        - name: ola-portfolio-app
+          # CI updates this to an immutable SHA tag on each successful build (ci-build-push.yml)
+          image: olaacr01dev.azurecr.io/ola-portfolio-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NODE_ENV
+              value: production
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ola-portfolio-app
+  namespace: portfolio-app
+  labels:
+    app: ola-portfolio-app
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: ola-portfolio-app

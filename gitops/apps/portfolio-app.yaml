@@ -1,0 +1,34 @@
+# ArgoCD Application Manifest
+# Enterprise-Grade GitOps: ArgoCD watches this file and deploys the application
+# CI only pushes images, ArgoCD pulls manifests from Git
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portfolio-app
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project.git
+    targetRevision: main
+    path: gitops/apps/portfolio-app
+    
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: portfolio-app
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    
+  revisionHistoryLimit: 10

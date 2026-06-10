@@ -1,0 +1,38 @@
+# Enterprise-grade: Allow ingress controller to access services
+# This policy allows ingress controllers to route traffic to application services
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-services
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: ola-portfolio-app  # Adjust label selector for your application
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow ingress controller to access services
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx  # Adjust namespace for your ingress controller
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+  # Allow ingress from ingress-nginx namespace (common pattern)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443

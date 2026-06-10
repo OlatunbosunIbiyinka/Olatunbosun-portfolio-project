@@ -1,0 +1,249 @@
+# Enterprise-grade: Cilium Hubble Helm Values
+# Best practices configuration for Hubble monitoring and observability
+
+# Hubble Relay - Aggregates metrics from all Cilium agents
+hubble:
+  relay:
+    enabled: true
+    # Enable TLS for secure communication
+    tls:
+      auto:
+        method: cronJob  # Automatically rotate certificates
+    # Service configuration
+    service:
+      type: LoadBalancer  # For external access (or ClusterIP for internal only)
+      annotations:
+        service.beta.kubernetes.io/azure-load-balancer-internal: "false"  # Set to "true" for internal LB
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    # Replicas for high availability
+    replicas: 2
+
+  # Hubble UI - Web interface for network observability
+  ui:
+    enabled: true
+    # Service configuration
+    service:
+      type: LoadBalancer  # For external access (or ClusterIP for internal only)
+      annotations:
+        service.beta.kubernetes.io/azure-load-balancer-internal: "false"  # Set to "true" for internal LB
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    # Replicas for high availability
+    replicas: 2
+
+  # Hubble Metrics - Export metrics to Prometheus
+  metrics:
+    enabled: true
+    # Metrics server configuration
+    server: ":9965"
+    # ServiceMonitor for Prometheus Operator
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+      labels:
+        app: hubble-metrics
+
+  # TLS Configuration
+  tls:
+    auto:
+      method: cronJob  # Automatically rotate certificates
+      # Certificate rotation schedule (every 24 hours)
+      schedule: "0 0 * * *"
+
+# Prometheus Integration
+prometheus:
+  enabled: true
+  # ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+# Cilium Operator Prometheus metrics
+operator:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+
+# Cilium Agent Configuration
+agent:
+  # Enable metrics
+  prometheus:
+    enabled: true
+    port: 9962
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
+
+# Network Policy Configuration
+# Note: Network policies are already configured via network_profile in Terraform
+# This section is for reference only
+networkPolicy:
+  enabled: true
+
+# Encryption Configuration (optional, for production)
+# encryption:
+#   enabled: true
+#   type: ipsec  # or wireguard
+
+# IPAM Configuration (for Azure CNI Overlay)
+ipam:
+  mode: "kubernetes"
+
+# Enable debug mode (disable in production)
+debug:
+  enabled: false
+
+# Logging Configuration
+logSystemLoad:
+  enabled: true
+
+# Enable IPv6 (if needed)
+enableIPv6: false
+
+# Enable BPF-based masquerading (better performance)
+enableBPFMasquerade: true
+
+# Enable local redirect policy (for service mesh)
+enableLocalRedirectPolicy: false
+
+# Enable bandwidth manager (for QoS)
+enableBandwidthManager: false
+
+# Enable BGP (if needed for advanced networking)
+enableBGP: false
+
+# Enable host firewall (additional security layer)
+enableHostFirewall: false
+
+# Enable endpoint health checking
+enableEndpointHealthChecking: true
+
+# Enable health checking between nodes
+enableHealthChecking: true
+
+# Enable L7 proxy (for Layer 7 network policies)
+enableL7Proxy: true
+
+# Enable policy enforcement
+enablePolicy: true
+
+# Enable remote node identity (for multi-cluster)
+enableRemoteNodeIdentity: false
+
+# Enable socket LB (for better performance)
+enableSocketLB: true
+
+# Enable SRv6 (if needed)
+enableSRv6: false
+
+# Enable XDP acceleration (for better performance)
+enableXDPAcceleration: true
+
+# Enable endpoint routes (for better routing)
+enableEndpointRoutes: false
+
+# Enable external IPs
+enableExternalIPs: true
+
+# Enable node port
+enableNodePort: true
+
+# Enable host port
+enableHostPort: true
+
+# Enable session affinity
+enableSessionAffinity: true
+
+# Enable topology aware hints
+enableTopologyAwareHints: false
+
+# Enable kube-proxy replacement (Cilium replaces kube-proxy)
+enableKubeProxyReplacement: true
+
+# Enable BPF-based kube-proxy replacement
+enableBPFKubeProxyReplacement: true
+
+# Enable BPF-based host routing
+enableBPFHostRouting: true
+
+# Enable BPF-based masquerading
+enableBPFMasquerade: true
+
+# Enable BPF-based NAT
+enableBPFNAT: true
+
+# Enable BPF-based load balancing
+enableBPFLoadBalancer: true
+
+# Enable BPF-based socket LB
+enableBPFSocketLB: true
+
+# Enable BPF-based XDP acceleration
+enableBPFXDPAcceleration: true
+
+# Enable BPF-based health checking
+enableBPFHealthChecking: true
+
+# Enable BPF-based policy enforcement
+enableBPFPolicyEnforcement: true
+
+# Enable BPF-based L7 proxy
+enableBPFL7Proxy: true
+
+# Enable BPF-based encryption
+enableBPFEncryption: false
+
+# Enable BPF-based BGP
+enableBPFBGP: false
+
+# Enable BPF-based SRv6
+enableBPFSRv6: false
+
+# Enable BPF-based remote node identity
+enableBPFRemoteNodeIdentity: false
+
+# Enable BPF-based local redirect policy
+enableBPFLocalRedirectPolicy: false
+
+# Enable BPF-based bandwidth manager
+enableBPFBandwidthManager: false
+
+# Enable BPF-based host firewall
+enableBPFHostFirewall: false
+
+# Enable BPF-based endpoint routes
+enableBPFEndpointRoutes: false
+
+# Enable BPF-based external IPs
+enableBPFExternalIPs: true
+
+# Enable BPF-based node port
+enableBPFNodePort: true
+
+# Enable BPF-based host port
+enableBPFHostPort: true
+
+# Enable BPF-based session affinity
+enableBPFSessionAffinity: true
+
+# Enable BPF-based topology aware hints
+enableBPFTopologyAwareHints: false

@@ -10,6 +10,8 @@
 
 # Ignore local variable files (may contain secrets)
 *.tfvars
+*.tfvars.b64
+*.b64
 # OS files
 .DS_Store
 Thumbs.db
@@ -35,10 +37,14 @@ Thumbs.db
 **/terraform/*_override.tf.json
 **/terraform/.terraformrc
 **/terraform/terraform.rc
+**/terraform/*.tfplan
+**/terraform/tfplan
+**/terraform/*.tfplan.binary
 
 # App-specific
 app/node_modules/
 app/dist/
+app/build/
 app/__pycache__/
 app/*.env
 
@@ -47,3 +53,14 @@ helm-v*.zip
 windows-amd64/
 
 monitoring-setup/alertmanager-template.yaml
+
+# Scripts backup files
+*.bak
+*.sh.bak
+
+# Kubernetes backup files
+k8s/*.bak
+
+# Temporary files
+*.tmp
+*.temp

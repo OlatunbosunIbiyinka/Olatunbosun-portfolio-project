@@ -1,31 +1,44 @@
-name: CI Pipeline
+name: CI - Quality
+
+# Code quality gate (GitHub-hosted). Runs on PRs and pushes before/at merge.
+# Build and deploy are handled by ci-build-push.yml + Argo CD GitOps.
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci.yml'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
-  id-token: write
-  actions: read
 
 jobs:
-  build:
+  quality:
+    name: Lint, Test, and SonarCloud
     runs-on: ubuntu-latest
-
-    env:
-      REGISTRY: olaacr01.azurecr.io
-      IMAGE_NAME: ola-portfolio-app
-      IMAGE_TAG: v${{ github.run_number }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.2.0
         with:
           node-version: 18
           cache: npm
@@ -33,39 +46,24 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./app
-        run: npm ci
+        run: npm ci --legacy-peer-deps
+
+      - name: Build application
+        working-directory: ./app
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./app
+        env:
+          CI: true
+        run: npm test -- --watchAll=false --passWithNoTests
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v2
+        uses: SonarSource/sonarcloud-github-action@v2.1.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: ./app
           args: >
             -Dsonar.organization=olatunbosunibiyinka
             -Dsonar.projectKey=OlatunbosunIbiyinka_Olatunbosun-portfolio-project
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-      - name: Azure Login (OIDC)
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Login to ACR
-        run: az acr login --name olaacr01
-
-      - name: Build and push image
-        run: |
-          docker build -t $REGISTRY/$IMAGE_NAME:$IMAGE_TAG ./app
-          docker push $REGISTRY/$IMAGE_NAME:$IMAGE_TAG
-          echo "IMAGE=$REGISTRY/$IMAGE_NAME:$IMAGE_TAG" >> $GITHUB_ENV
-
-      - name: Save image tag to file
-        run: echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" > image-tag.txt
-
-      - name: Upload image metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-tag
-          path: image-tag.txt

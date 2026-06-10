@@ -1,0 +1,136 @@
+name: CI - Build and Push Images
+
+# Unified release pipeline (self-hosted runner, private ACR, GitHub OIDC).
+#
+# Flow: checkout → build (Buildx + ACR cache) → Trivy gate → push SHA tag
+#       → update GitOps manifest → commit to same branch
+# Argo CD watches gitops/ on main and deploys the immutable SHA tag.
+#
+# Triggers only on app/ changes — GitOps commits do not re-trigger this workflow.
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci-build-push.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ola-portfolio-app
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ACR_NAME: ${{ secrets.ACR_NAME }}
+  RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }}
+
+jobs:
+  build-scan-push:
+    name: Build, Scan, Push, and Update GitOps
+    runs-on: self-hosted
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Verify Docker and Dockerfile
+        run: |
+          docker version
+          docker buildx version
+          test -f app/Dockerfile
+
+      - name: Setup Docker Buildx
+        run: |
+          if ! docker buildx inspect portfolio-builder >/dev/null 2>&1; then
+            docker buildx create --name portfolio-builder --use
+          else
+            docker buildx use portfolio-builder
+          fi
+          docker buildx inspect --bootstrap
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2.2.0
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        id: acr
+        run: |
+          ACR_LOGIN_SERVER=$(az acr show \
+            --name "${{ env.ACR_NAME }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --query loginServer -o tsv)
+          TOKEN=$(az acr login \
+            --name "${{ env.ACR_NAME }}" \
+            --expose-token \
+            --output tsv \
+            --query accessToken)
+          echo "$TOKEN" | docker login "$ACR_LOGIN_SERVER" \
+            -u 00000000-0000-0000-0000-000000000000 \
+            --password-stdin
+          echo "login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Build image (Buildx + registry cache)
+        id: build
+        env:
+          ACR_LOGIN_SERVER: ${{ steps.acr.outputs.login_server }}
+        run: |
+          IMAGE_SHA="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          CACHE_REF="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:buildcache"
+
+          docker buildx build \
+            --cache-from "type=registry,ref=${CACHE_REF}" \
+            --cache-to "type=registry,ref=${CACHE_REF},mode=max" \
+            --load \
+            -t "$IMAGE_SHA" \
+            -f app/Dockerfile \
+            ./app
+
+          echo "image_sha=$IMAGE_SHA" >> "$GITHUB_OUTPUT"
+          echo "Built $IMAGE_SHA"
+
+      - name: Trivy vulnerability scan (gate)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.build.outputs.image_sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Push image to ACR
+        run: docker push "${{ steps.build.outputs.image_sha }}"
+
+      - name: Update GitOps deployment manifest
+        env:
+          ACR_LOGIN_SERVER: ${{ steps.acr.outputs.login_server }}
+        run: |
+          FILE=gitops/apps/portfolio-app/deployment.yaml
+          IMAGE="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          sed -i "s|image: .*${{ env.IMAGE_NAME }}:.*|image: ${IMAGE}|" "$FILE"
+          grep "image:" "$FILE"
+
+      - name: Commit and push GitOps update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gitops/apps/portfolio-app/deployment.yaml
+          if git diff --staged --quiet; then
+            echo "GitOps manifest already at ${{ github.sha }}"
+          else
+            git commit -m "chore(gitops): deploy ola-portfolio-app@${{ github.sha }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

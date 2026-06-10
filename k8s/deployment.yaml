@@ -2,8 +2,17 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ola-portfolio-app
+  namespace: default
+  labels:
+    app: ola-portfolio-app
+    version: v1
 spec:
-  replicas: 1
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: ola-portfolio-app
@@ -11,10 +20,108 @@ spec:
     metadata:
       labels:
         app: ola-portfolio-app
+        version: v1
     spec:
+      serviceAccountName: workload-identity-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: ola-portfolio-app
         image: IMAGE_PLACEHOLDER
+        imagePullPolicy: Always
         ports:
-        - containerPort: 80
-
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        # Resource limits and requests
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        # Health checks
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        # Writable paths (readOnlyRootFilesystem); nginx needs these at runtime
+        volumeMounts:
+        - name: nginx-cache
+          mountPath: /var/cache/nginx
+        - name: nginx-run
+          mountPath: /var/run
+        - name: nginx-tmp
+          mountPath: /tmp
+        - name: nginx-log
+          mountPath: /var/log/nginx
+        # Secrets from Key Vault
+        - name: secrets-store
+          mountPath: "/mnt/secrets-store"
+          readOnly: true
+        # Environment variables (optional - can use secrets from Key Vault)
+        env:
+        - name: NODE_ENV
+          value: "production"
+      volumes:
+      - name: nginx-cache
+        emptyDir: {}
+      - name: nginx-run
+        emptyDir: {}
+      - name: nginx-tmp
+        emptyDir: {}
+      - name: nginx-log
+        emptyDir: {}
+      # Secret Store CSI driver
+      - name: secrets-store
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "azure-kv-secrets"
+      # Pod disruption budget handled separately
+      # Affinity rules for better distribution
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - ola-portfolio-app
+              topologyKey: kubernetes.io/hostname
+      # Tolerations (if needed for node pools)
+      tolerations:
+      - effect: NoSchedule
+        key: workload
+        operator: Equal
+        value: "application"

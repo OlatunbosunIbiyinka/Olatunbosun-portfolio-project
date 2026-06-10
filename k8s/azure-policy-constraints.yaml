@@ -1,0 +1,78 @@
+# Enterprise-grade: Azure Policy constraints for admission control
+# These policies enforce guardrails at the cluster level
+# Note: These are examples - actual policy definitions are managed via Azure Policy
+
+---
+# Example: Block :latest image tags
+# This constraint prevents pods from using :latest image tags
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: require-image-tag
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+  parameters:
+    labels:
+      - key: "image-tag"
+        allowedRegex: "^(?!.*:latest$).*$"
+---
+# Example: Require resource requests and limits
+# This constraint ensures all containers have resource requests and limits
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: require-resource-limits
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+  parameters:
+    labels:
+      - key: "resources"
+        allowedRegex: ".*requests.*limits.*"
+---
+# Example: Restrict container registries
+# This constraint only allows images from approved registries
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: restrict-registries
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+  parameters:
+    labels:
+      - key: "image-registry"
+        allowedRegex: "^(acr\\.azurecr\\.io|docker\\.io|ghcr\\.io).*$"
+---
+# Note: The above are examples using Gatekeeper constraints
+# For Azure Policy, use Azure Policy definitions instead:
+# - "Kubernetes cluster containers should only use allowed images"
+# - "Kubernetes cluster containers should only use allowed capabilities"
+# - "Kubernetes cluster containers should run with a read only root file system"
+# - "Kubernetes cluster containers should not use forbidden sysctl interfaces"
+# - "Kubernetes cluster containers should not use forbidden capabilities"
+# - "Kubernetes cluster containers should not run with allowPrivilegeEscalation"
+# - "Kubernetes cluster containers should not run as root user"
+# - "Kubernetes cluster containers should not use hostNetwork or hostPID"
+# - "Kubernetes cluster containers should not use hostIPC"
+# - "Kubernetes cluster containers should not use hostPath volumes"
+# - "Kubernetes cluster containers should not use forbidden volume types"
+# - "Kubernetes cluster containers should not use forbidden AppArmor profiles"
+# - "Kubernetes cluster containers should not use forbidden seccomp profiles"
+# - "Kubernetes cluster containers should not use forbidden user IDs"
+# - "Kubernetes cluster containers should not use forbidden group IDs"
+# - "Kubernetes cluster containers should not use forbidden SELinux options"
+# - "Kubernetes cluster containers should not use forbidden capabilities"
+# - "Kubernetes cluster containers should not use forbidden sysctl interfaces"
+# - "Kubernetes cluster containers should not use forbidden AppArmor profiles"
+# - "Kubernetes cluster containers should not use forbidden seccomp profiles"
+# - "Kubernetes cluster containers should not use forbidden user IDs"
+# - "Kubernetes cluster containers should not use forbidden group IDs"
+# - "Kubernetes cluster containers should not use forbidden SELinux options"

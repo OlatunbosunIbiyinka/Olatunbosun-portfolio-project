@@ -111,8 +111,8 @@ const PipelineDiagram = () => {
                   
                   {/* Details */}
                   <div className="space-y-2">
-                    {step.details.map((detail, idx) => (
-                      <div key={idx} className="flex items-center justify-center space-x-2 text-sm text-gray-400">
+                    {step.details.map((detail) => (
+                      <div key={detail} className="flex items-center justify-center space-x-2 text-sm text-gray-400">
                         <div className="w-1.5 h-1.5 bg-gradient-to-r from-cyan to-purple rounded-full"></div>
                         <span>{detail}</span>
                       </div>

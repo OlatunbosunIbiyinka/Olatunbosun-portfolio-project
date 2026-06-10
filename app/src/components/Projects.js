@@ -97,8 +97,8 @@ const Projects = () => {
                       Key Outcomes
                     </h4>
                     <ul className="space-y-2">
-                      {project.outcomes.map((outcome, idx) => (
-                        <li key={idx} className="flex items-start space-x-2 text-gray-300 text-sm">
+                      {project.outcomes.map((outcome) => (
+                        <li key={outcome} className="flex items-start space-x-2 text-gray-300 text-sm">
                           <div className="w-1.5 h-1.5 bg-gradient-to-r from-cyan to-purple rounded-full mt-2 flex-shrink-0"></div>
                           <span>{outcome}</span>
                         </li>

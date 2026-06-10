@@ -42,6 +42,7 @@ Thumbs.db
 **/terraform/*.tfplan.binary
 
 # App-specific
+node_modules/
 app/node_modules/
 app/dist/
 app/build/

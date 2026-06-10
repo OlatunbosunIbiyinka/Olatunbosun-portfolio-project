@@ -24,6 +24,9 @@ concurrency:
 
 env:
   IMAGE_NAME: ola-portfolio-app
+  AKS_NAME: ola-aks-dev
+  APP_NAMESPACE: portfolio-app
+  DEPLOYMENT_NAME: ola-portfolio-app
   AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -134,3 +137,45 @@ jobs:
             git commit -m "chore(gitops): deploy ola-portfolio-app@${{ github.sha }}"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
+
+      - name: Configure kubectl (private AKS via ops VM identity)
+        run: |
+          az aks get-credentials \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --name "${{ env.AKS_NAME }}" \
+            --overwrite-existing
+
+      - name: Post-deploy smoke test (GitOps sync + health)
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          NS="${{ env.APP_NAMESPACE }}"
+          DEP="${{ env.DEPLOYMENT_NAME }}"
+          DEADLINE=$((SECONDS + 300))
+
+          echo "Waiting for GitOps/Argo CD to roll out image containing ${EXPECTED_SHA}..."
+          while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            IMAGE=$(kubectl get deployment "$DEP" -n "$NS" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
+            if echo "$IMAGE" | grep -q "$EXPECTED_SHA"; then
+              echo "Deployment image: $IMAGE"
+              break
+            fi
+            echo "Current image: ${IMAGE:-<none>}; retrying in 10s..."
+            sleep 10
+          done
+
+          IMAGE=$(kubectl get deployment "$DEP" -n "$NS" -o jsonpath='{.spec.template.spec.containers[0].image}')
+          echo "$IMAGE" | grep -q "$EXPECTED_SHA" || {
+            echo "Timed out waiting for GitOps sync to commit SHA"
+            exit 1
+          }
+
+          kubectl rollout status "deployment/$DEP" -n "$NS" --timeout=180s
+
+          POD=$(kubectl get pods -n "$NS" -l app=ola-portfolio-app \
+            -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}' | awk '{print $1}')
+          test -n "$POD" || { echo "No running pod found"; exit 1; }
+
+          kubectl exec -n "$NS" "$POD" -- curl -sf http://127.0.0.1:8080/health | grep -q healthy
+          echo "Smoke test passed: rollout healthy for ${EXPECTED_SHA}"

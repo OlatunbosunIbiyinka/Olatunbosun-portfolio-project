@@ -88,9 +88,9 @@ enable_nat_gateway = true  # Enterprise-grade: Enabled for predictable egress IP
 # Enable Azure Bastion + Jumpbox VM for secure access to private AKS cluster
 # This provides secure RDP/SSH access without exposing VMs to the internet
 # Recommended for production environments with private AKS clusters
-enable_bastion = false  # Set to true to enable Bastion + Jumpbox (recommended for production)
-# bastion_subnet_address_prefixes = ["10.0.3.0/26"]  # Must be /26 or larger (minimum 64 IPs)
-# jumpbox_vm_name = "aks-jumpbox"
+enable_bastion = true
+jumpbox_vm_name = "aks-operations-vm"
+enable_argocd = true
 # jumpbox_vm_size = "Standard_B2s"  # Sufficient for kubectl operations
 # jumpbox_admin_username = "azureuser"
 # github_repository_url = "https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project"

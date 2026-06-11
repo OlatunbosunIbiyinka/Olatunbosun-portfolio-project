@@ -89,10 +89,9 @@ resource "azurerm_subnet_network_security_group_association" "jumpbox" {
 
 locals {
   # Treat empty string like null so we never pass admin_ssh_key with a null/empty public_key (AzureRM requires a real key).
+  jumpbox_ssh_public_key_trimmed = trimspace(coalesce(var.jumpbox_ssh_public_key, ""))
   jumpbox_ssh_public_key_effective = (
-    var.jumpbox_ssh_public_key != null && trimspace(var.jumpbox_ssh_public_key) != ""
-    ? trimspace(var.jumpbox_ssh_public_key)
-    : null
+    local.jumpbox_ssh_public_key_trimmed != "" ? local.jumpbox_ssh_public_key_trimmed : null
   )
 }
 

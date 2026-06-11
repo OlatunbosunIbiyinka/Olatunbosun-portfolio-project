@@ -167,22 +167,37 @@ jobs:
 
           kubectl get deployment "$DEP" -n "$NS" --request-timeout=30s >/dev/null
 
-          echo "Triggering Argo CD hard refresh for portfolio-app..."
-          kubectl annotate application portfolio-app -n argocd \
-            argocd.argoproj.io/refresh=hard --overwrite >/dev/null
+          REPO_URL="https://github.com/${{ github.repository }}.git"
+          force_argo_sync() {
+            MAIN_REV=$(git ls-remote "$REPO_URL" refs/heads/main | awk '{print $1}')
+            test -n "$MAIN_REV"
+            echo "Forcing Argo CD sync to main@${MAIN_REV}"
+            kubectl patch application portfolio-app -n argocd --type merge -p \
+              "{\"operation\":{\"initiatedBy\":{\"username\":\"github-actions\"},\"sync\":{\"revision\":\"${MAIN_REV}\",\"syncOptions\":[\"Force=true\"]}}}"
+          }
+
+          sleep 5
+          force_argo_sync
 
           echo "Waiting for GitOps/Argo CD to roll out image containing ${EXPECTED_SHA}..."
+          ATTEMPT=0
           while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            ATTEMPT=$((ATTEMPT + 1))
             SYNC=$(kubectl get application portfolio-app -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || true)
+            HEALTH=$(kubectl get application portfolio-app -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || true)
+            OP=$(kubectl get application portfolio-app -n argocd -o jsonpath='{.status.operationState.phase}' 2>/dev/null || true)
+            REV=$(kubectl get application portfolio-app -n argocd -o jsonpath='{.status.sync.revision}' 2>/dev/null || true)
             IMAGE=$(kubectl get deployment "$DEP" -n "$NS" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
             if echo "$IMAGE" | grep -q "$EXPECTED_SHA"; then
-              echo "Deployment image: $IMAGE (Argo sync: ${SYNC:-unknown})"
+              echo "Deployment image: $IMAGE (sync=${SYNC}, health=${HEALTH}, revision=${REV})"
               break
             fi
-            echo "Current image: ${IMAGE:-<none>}; Argo sync: ${SYNC:-unknown}; retrying in 10s..."
-            sleep 10
-            kubectl annotate application portfolio-app -n argocd \
-              argocd.argoproj.io/refresh=hard --overwrite >/dev/null 2>&1 || true
+            echo "image=${IMAGE:-<none>} sync=${SYNC:-?} health=${HEALTH:-?} op=${OP:-?} revision=${REV:-?}"
+            if [ $((ATTEMPT % 6)) -eq 0 ]; then
+              force_argo_sync
+            else
+              sleep 10
+            fi
           done
 
           IMAGE=$(kubectl get deployment "$DEP" -n "$NS" -o jsonpath='{.spec.template.spec.containers[0].image}')

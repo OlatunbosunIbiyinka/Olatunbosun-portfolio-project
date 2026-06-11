@@ -545,15 +545,19 @@ resource "azurerm_virtual_machine_extension" "jumpbox_setup_phase2" {
   tags = var.tags
 }
 
-# Role Assignment: AKS Cluster Admin (for kubectl operations)
-# Enterprise-grade: Grant minimum required permissions using managed identity
-# Using for_each with static keys to avoid "count depends on resource attributes" error
-# Boolean flags are known at plan time, allowing Terraform to determine for_each keys
-# Scope can be unknown - Terraform will resolve it at apply time
+# Role Assignment: AKS Cluster Admin (ARM — manage cluster resource, get credentials)
 resource "azurerm_role_assignment" "operations_vm_aks_admin" {
   for_each             = var.enable_aks_role_assignment ? toset(["aks"]) : toset([])
   scope                = var.aks_cluster_id
   role_definition_name = "Azure Kubernetes Service Cluster Admin Role"
+  principal_id         = azurerm_user_assigned_identity.operations_vm.principal_id
+}
+
+# Role Assignment: AKS RBAC Cluster Admin (Kubernetes API — required when AAD Azure RBAC is enabled)
+resource "azurerm_role_assignment" "operations_vm_aks_rbac_admin" {
+  for_each             = var.enable_aks_role_assignment ? toset(["aks-rbac"]) : toset([])
+  scope                = var.aks_cluster_id
+  role_definition_name = "Azure Kubernetes Service RBAC Cluster Admin"
   principal_id         = azurerm_user_assigned_identity.operations_vm.principal_id
 }
 

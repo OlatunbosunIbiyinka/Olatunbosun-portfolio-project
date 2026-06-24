@@ -18,6 +18,10 @@ RUN npm ci --legacy-peer-deps && \
 # Copy source code
 COPY . .
 
+# Optional: Calendly scheduling URL (baked in at build time for CRA)
+ARG REACT_APP_CALENDLY_URL=
+ENV REACT_APP_CALENDLY_URL=$REACT_APP_CALENDLY_URL
+
 # Build the application
 RUN npm run build
 

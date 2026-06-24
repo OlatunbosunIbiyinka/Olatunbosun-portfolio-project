@@ -7,9 +7,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        navy: '#0A2540',
-        cyan: '#3B82F6',
-        purple: '#9333EA',
+        navy: '#0E0B16',
+        cyan: '#2DD4BF',
+        purple: '#A78BFA',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
@@ -17,8 +17,8 @@ module.exports = {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'hero-gradient': 'linear-gradient(135deg, #0A2540 0%, #3B82F6 50%, #9333EA 100%)',
-        'card-gradient': 'linear-gradient(135deg, rgba(10, 37, 64, 0.8) 0%, rgba(59, 130, 246, 0.1) 100%)',
+        'hero-gradient': 'linear-gradient(135deg, #0E0B16 0%, #2DD4BF 45%, #A78BFA 100%)',
+        'card-gradient': 'linear-gradient(145deg, rgba(20, 16, 32, 0.95) 0%, rgba(45, 212, 191, 0.06) 50%, rgba(167, 139, 250, 0.05) 100%)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -31,8 +31,8 @@ module.exports = {
           '50%': { transform: 'translateY(-20px)' },
         },
         glow: {
-          '0%': { boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)' },
-          '100%': { boxShadow: '0 0 30px rgba(147, 51, 234, 0.5)' },
+          '0%': { boxShadow: '0 0 20px rgba(45, 212, 191, 0.35)' },
+          '100%': { boxShadow: '0 0 32px rgba(167, 139, 250, 0.45)' },
         }
       }
     },

@@ -9,7 +9,12 @@
   
   body {
     @apply bg-navy text-white font-sans antialiased;
-    background: linear-gradient(135deg, #0A2540 0%, #0F1419 50%, #0A2540 100%);
+    background-color: #0E0B16;
+    background-image:
+      radial-gradient(ellipse 90% 55% at 10% -5%, rgba(45, 212, 191, 0.14), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 95% 105%, rgba(167, 139, 250, 0.12), transparent 50%),
+      radial-gradient(ellipse 50% 40% at 50% 50%, rgba(30, 27, 46, 0.6), transparent),
+      linear-gradient(165deg, #0E0B16 0%, #14101F 40%, #0A1218 100%);
     min-height: 100vh;
   }
 }

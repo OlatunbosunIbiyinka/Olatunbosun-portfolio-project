@@ -1,10 +1,13 @@
-# Reference manifest — GitOps source of truth: gitops/apps/portfolio-app/networkpolicy-ingress.yaml
+# Allow NGINX Ingress Controller to reach portfolio pods (Cilium/network policy environments)
 
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-ingress-to-portfolio
   namespace: portfolio-app
+  labels:
+    app: ola-portfolio-app
+    managed-by: argocd
 spec:
   podSelector:
     matchLabels:

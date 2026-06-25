@@ -46,10 +46,15 @@ gitops/
 ├── apps/
 │   ├── portfolio-app.yaml          # ArgoCD Application definition
 │   └── portfolio-app/
-│       ├── deployment.yaml         # Kubernetes Deployment
-│       └── service.yaml            # Kubernetes Service
+│       ├── deployment.yaml         # Kubernetes Deployment + Service
+│       ├── ingress.yaml            # olatunbosun.dev public ingress
+│       └── networkpolicy-ingress.yaml
+├── platform/
+│   └── cluster-issuer.yaml         # cert-manager Let's Encrypt (apply once on cluster)
 └── README.md                       # This file
 ```
+
+Public URL setup: see **`docs/DOMAIN_SETUP.md`**.
 
 ## Getting Started
 

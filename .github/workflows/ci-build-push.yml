@@ -95,6 +95,7 @@ jobs:
           CACHE_REF="${ACR_LOGIN_SERVER}/${{ env.IMAGE_NAME }}:buildcache"
 
           docker buildx build \
+            --build-arg REACT_APP_CALENDLY_URL="${{ vars.REACT_APP_CALENDLY_URL }}" \
             --cache-from "type=registry,ref=${CACHE_REF}" \
             --cache-to "type=registry,ref=${CACHE_REF},mode=max" \
             --load \

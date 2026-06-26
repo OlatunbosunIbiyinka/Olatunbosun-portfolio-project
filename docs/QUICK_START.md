@@ -34,7 +34,7 @@ This script:
 |---------|-----|
 | Key Vault name taken | `az keyvault purge --name ola-kv-dev --location uksouth` |
 | Terraform state drift | `.\start-fresh.ps1` then re-run bootstrap |
-| AKS timeout | Wait — create timeout is 360m; check Azure Portal activity log |
+| AKS timeout | Wait — create timeout is 720m. If TF fails while Azure still `Creating`, run `.\recover-phase1-after-aks-timeout.ps1` |
 
 ## Phase 2 — Ops VM (~30–45 min)
 

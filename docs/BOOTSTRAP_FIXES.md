@@ -56,4 +56,15 @@ terraform apply -var-file="envs/dev/terraform.tfvars" \
 
 ---
 
-_Add new rows here when fixing issues during apply._
+## 2026-06-26 — Phase 1 apply: Terraform timeout while AKS still Creating
+
+| Problem | Fix |
+|---------|-----|
+| `context deadline exceeded` after 360m; AKS still `Creating` in Azure | Do **not** delete cluster. Run `.\recover-phase1-after-aks-timeout.ps1` — waits for `Succeeded`, imports cluster, completes apply |
+| AKS not in terraform state after timeout | `terraform import module.aks.azurerm_kubernetes_cluster.aks <aks-resource-id>` |
+| Recurring 360m timeout on this stack | Increased create timeout to `720m` in `modules/aks/main.tf` |
+
+```powershell
+cd infra/terraform
+.\recover-phase1-after-aks-timeout.ps1
+```

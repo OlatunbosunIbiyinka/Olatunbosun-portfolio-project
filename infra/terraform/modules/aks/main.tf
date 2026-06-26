@@ -152,7 +152,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # - Node provisioning and API server connectivity
   # - Complex network routing scenarios
   timeouts {
-    create = "360m" # Private cluster + NAT + Cilium can exceed 3h on first create
+    create = "720m" # Private cluster + NAT + Cilium often exceeds 6h on first create; use recover-phase1-after-aks-timeout.ps1 if TF times out while Azure still Creating
     # Initial creation with private cluster + NAT Gateway + Cilium can take 120-180+ minutes
     update = "180m" # Significantly increased for default node pool updates (can take 90-120+ minutes)
     delete = "90m"  # Increased for cluster deletion

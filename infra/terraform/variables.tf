@@ -508,6 +508,13 @@ variable "github_runner_token" {
   sensitive   = true
 }
 
+# Stage 1 (laptop): leave null — VM deploys without AKS. Stage 2 (ops VM): set to cluster resource ID after AKS exists.
+variable "jumpbox_aks_cluster_id" {
+  description = "AKS cluster resource ID for ops VM role assignments. Null on stage 1 (VM before cluster)."
+  type        = string
+  default     = null
+}
+
 # Azure AD Login Configuration (Enterprise-grade)
 # Access to the Trusted Execution Zone VM is controlled via Azure RBAC
 # No SSH keys needed - users authenticate with Azure AD credentials

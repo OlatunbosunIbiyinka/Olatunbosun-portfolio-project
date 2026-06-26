@@ -404,10 +404,9 @@ module "bastion_jumpbox" {
   source = "./modules/bastion-jumpbox"
 
   depends_on = [
-    module.vnet,    # Ensure VNet and subnets are created
-    module.aks,     # Ensure AKS cluster exists for role assignments
-    module.acr,     # Ensure ACR exists for role assignments
-    module.keyvault # Ensure Key Vault exists for role assignments
+    module.vnet,
+    module.acr,
+    module.keyvault,
   ]
 
   resource_group_name = azurerm_resource_group.rg.name
@@ -430,12 +429,12 @@ module "bastion_jumpbox" {
   enable_shareable_link = var.enable_bastion_shareable_link
   enable_tunneling      = var.enable_bastion_tunneling
 
-  # Trusted Execution Zone Configuration
-  # Role assignments for Managed Identity
-  aks_cluster_id    = module.aks.cluster_id
-  acr_id            = module.acr.acr_id
-  key_vault_id      = module.keyvault.key_vault_id
-  resource_group_id = azurerm_resource_group.rg.id
+  # Trusted Execution Zone Configuration — AKS bindings deferred until stage 2 (jumpbox_aks_cluster_id set from ops VM)
+  aks_cluster_id               = var.jumpbox_aks_cluster_id
+  enable_aks_role_assignment   = var.jumpbox_aks_cluster_id != null && var.jumpbox_aks_cluster_id != ""
+  acr_id                       = module.acr.acr_id
+  key_vault_id                 = module.keyvault.key_vault_id
+  resource_group_id            = azurerm_resource_group.rg.id
 
   # Optional: Monitoring
   log_analytics_workspace_id = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null

@@ -1,0 +1,2 @@
+# Shell scripts must use LF or Linux shebang fails with "Permission denied"
+*.sh text eol=lf

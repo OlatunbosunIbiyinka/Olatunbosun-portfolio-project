@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Stage 2 (ops VM): AKS + VM cluster RBAC. Run via Bastion after stage 1.
+#
+# Run with (do NOT rely on ./ if you see "Permission denied"):
+#   bash scripts/bootstrap-stage2-from-vm.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,11 +13,18 @@ VAR_FILE="envs/dev/terraform.tfvars"
 
 log() { printf '[stage2] %s\n' "$*"; }
 
-"${REPO_ROOT}/scripts/setup-phase2-tools.sh"
+log "Installing tools (uses sudo — you may be prompted once)..."
+bash "${REPO_ROOT}/scripts/setup-phase2-tools.sh"
 
-if ! az account show >/dev/null 2>&1; then az login; fi
+if ! az account show >/dev/null 2>&1; then
+  log "Azure CLI not logged in — run device login..."
+  az login --use-device-code
+fi
+
 export KUBECONFIG=""
 cd "${TF_DIR}"
+
+log "Terraform init (remote state via Azure AD)..."
 terraform init -upgrade
 
 AKS_ID=$(az aks show -g "$RG" -n "$AKS" --query id -o tsv 2>/dev/null || true)
@@ -25,16 +35,18 @@ if [[ -n "$AKS_ID" && "$AKS_STATE" == "Creating" ]]; then
   for _ in $(seq 1 180); do
     AKS_STATE=$(az aks show -g "$RG" -n "$AKS" --query provisioningState -o tsv)
     [[ "$AKS_STATE" == "Succeeded" ]] && break
-    [[ "$AKS_STATE" == "Failed" ]] && { log "AKS Failed — delete in Portal and re-run this script"; exit 1; }
+    [[ "$AKS_STATE" == "Failed" ]] && { log "AKS Failed — delete in Portal and re-run"; exit 1; }
     sleep 60
   done
 fi
 
-if [[ -n "$AKS_ID" ]] && ! terraform state list | grep -q 'module.aks.azurerm_kubernetes_cluster.aks'; then
+if [[ -n "$AKS_ID" ]] && ! terraform state list 2>/dev/null | grep -q 'module.aks.azurerm_kubernetes_cluster.aks'; then
   log "Importing existing AKS into Terraform state..."
   terraform import -var-file="$VAR_FILE" \
     -var="enable_argocd=false" -var="enable_aks_monitoring_addon=false" \
     "module.aks.azurerm_kubernetes_cluster.aks" "$AKS_ID"
+fi
+
 if [[ -z "$AKS_ID" ]]; then
   log "Creating AKS (expect 2–6h on ops VM)..."
   terraform apply -var-file="$VAR_FILE" \
@@ -54,4 +66,4 @@ terraform apply \
   -var="jumpbox_aks_cluster_id=${AKS_ID}" \
   -auto-approve
 
-log "Stage 2 done. Next: ./scripts/phase2-on-vm.sh (Argo CD + GitOps)"
+log "Stage 2 done. Next: bash scripts/phase2-on-vm.sh"

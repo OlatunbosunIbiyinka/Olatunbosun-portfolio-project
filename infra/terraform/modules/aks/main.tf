@@ -96,9 +96,9 @@ resource "azurerm_kubernetes_cluster" "aks" {
     }
   }
 
-  # Logging and monitoring
+  # Logging and monitoring — defer oms_agent on bootstrap; enable via enable_aks_monitoring_addon after cluster is healthy
   dynamic "oms_agent" {
-    for_each = var.enable_log_analytics && var.log_analytics_workspace_id != null ? [1] : []
+    for_each = var.enable_log_analytics && var.enable_aks_monitoring_addon && var.log_analytics_workspace_id != null ? [1] : []
     content {
       log_analytics_workspace_id = var.log_analytics_workspace_id
     }
@@ -152,7 +152,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # - Node provisioning and API server connectivity
   # - Complex network routing scenarios
   timeouts {
-    create = "240m" # Significantly increased for initial cluster creation with complex network setup
+    create = "360m" # Private cluster + NAT + Cilium can exceed 3h on first create
     # Initial creation with private cluster + NAT Gateway + Cilium can take 120-180+ minutes
     update = "180m" # Significantly increased for default node pool updates (can take 90-120+ minutes)
     delete = "90m"  # Increased for cluster deletion

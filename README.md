@@ -1,733 +1,334 @@
-# 🚀 Olatunbosun Portfolio - Production-Grade Cloud Deployment
+# Olatunbosun Portfolio — Azure Platform Engineering Project
 
 [![CI - Build and Push](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/ci-build-push.yml/badge.svg)](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/ci-build-push.yml)
 [![CI - Quality](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/ci.yml/badge.svg)](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/ci.yml)
 [![Terraform Validation](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/terraform.yml/badge.svg)](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/terraform.yml)
 
-A **production-grade** React portfolio application deployed on **Azure Kubernetes Service (AKS)** with complete infrastructure-as-code, automated CI/CD pipelines, enterprise security, and comprehensive observability.
+A production-pattern **React portfolio** on **Azure Kubernetes Service (AKS)**, provisioned with **Terraform**, delivered via **GitOps (Argo CD)**, and automated through **three GitHub Actions pipelines** with enterprise security controls.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Quick Start Guide](#-quick-start-guide)
-- [What's Included](#-whats-included)
-- [Architecture Overview](#-architecture-overview)
-- [Prerequisites](#-prerequisites)
-- [Complete Setup Walkthrough](#-complete-setup-walkthrough)
-- [Key Features](#-key-features)
-- [Documentation](#-documentation)
-- [Troubleshooting](#-troubleshooting)
-
----
-
-## ⚡ Quick Start Guide
-
-Get your production-grade deployment up and running in **5 simple steps**:
-
-### Step 1: Clone & Configure
-
-```bash
-# Clone the repository
-git clone https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project.git
-cd Olatunbosun-portfolio-project
-
-# Copy and edit Terraform variables
-cp infra/terraform/envs/dev/terraform.tfvars.example infra/terraform/envs/dev/terraform.tfvars
-# Edit terraform.tfvars with your values
-```
-
-### Step 2: Deploy Infrastructure
-
-```bash
-cd infra/terraform
-
-# Initialize Terraform
-terraform init
-
-# Review the plan
-terraform plan -var-file="envs/dev/terraform.tfvars" -out=tfplan
-
-# Apply infrastructure (takes ~15-20 minutes for dev, ~30-45 minutes for production)
-terraform apply tfplan
-```
-
-**Note:** For production environments with NAT Gateway, use **staged deployment** (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) Section 19) to avoid bootstrap timeouts.
-
-### Step 3: Setup GitHub OIDC (Automatically Configured)
-
-GitHub OIDC is **automatically configured** during infrastructure deployment. The Terraform module creates:
-- Azure AD Application for GitHub Actions
-- Federated Identity Credential for OIDC authentication
-- Role assignments for ACR push access
-
-**Verify OIDC Configuration:**
-```bash
-cd infra/terraform
-terraform output github_oidc_client_id
-terraform output github_oidc_tenant_id
-```
-
-**Note:** GitHub Actions workflows use OIDC automatically - no manual secret configuration needed. See [docs/OIDC_SETUP.md](docs/OIDC_SETUP.md) for details.
-
-### Step 4: Access Private AKS Cluster
-
-Since the AKS cluster is **private** (`aks_private_cluster_enabled = true`), you need to access it from within the VNet:
-
-**Option 1: Azure Cloud Shell (Quick Test)**
-```bash
-# Open Azure Cloud Shell: https://shell.azure.com
-az aks get-credentials --resource-group ola-rg-dev --name ola-aks-dev
-kubectl get nodes
-```
-
-**Option 2: Azure Bastion + Jumpbox (Production)**
-- Enable in `terraform.tfvars`: `enable_bastion = true`
-- Connect via Azure Portal → Virtual Machines → Connect → Bastion
-- Tools (kubectl, Azure CLI, kubelogin) are pre-installed
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed access instructions.
-
-### Step 5: Configure Key Vault Secrets
-
-```bash
-# Get Key Vault name
-KEY_VAULT_NAME=$(cd infra/terraform && terraform output -raw key_vault_name)
-
-# Store secrets
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "acr-username" --value "<value>"
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "acr-password" --value "<value>"
-```
-
-### Step 6: Deploy Application
-
-```bash
-# Get AKS credentials (from Cloud Shell or Jumpbox)
-az aks get-credentials --resource-group ola-rg-dev --name ola-aks-dev
-
-# Install Secret Store CSI Driver (if not already installed)
-helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-helm install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
-  --namespace kube-system --set syncSecret.enabled=true
-
-# Deploy application
-kubectl apply -f k8s/
-```
-
-**🎉 Done!** Your application is now running in production-grade Kubernetes.
+- [What This Project Is](#what-this-project-is)
+- [Architecture](#architecture)
+- [CI/CD Pipelines](#cicd-pipelines)
+- [Repository Structure](#repository-structure)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Multi-Environment](#multi-environment)
+- [Security Model](#security-model)
+- [Documentation](#documentation)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🎯 What's Included
+## What This Project Is
 
-This project provides a **complete production-ready infrastructure** with:
+| Layer | Technology | Role |
+|-------|------------|------|
+| **Application** | React 18 + nginx (port 8080) | Static portfolio SPA |
+| **Infrastructure** | Terraform 1.10.5 on Azure | VNet, private AKS, ACR, Key Vault, Bastion, Argo CD |
+| **Supply chain** | GitHub Actions (self-hosted runner) | Build, Trivy scan, push immutable images to private ACR |
+| **Runtime** | Argo CD (in-cluster) | Reconcile cluster state from Git — CI never deploys directly |
 
-### 🏗️ Infrastructure
-- ✅ **Terraform IaC** - Modular, reusable infrastructure code
-- ✅ **Azure AKS** - Managed Kubernetes cluster with auto-scaling
-  - ✅ **Azure CNI Overlay** - Better IP management and scalability (up to 50,000 pods)
-  - ✅ **Cilium Network Policy** - Advanced network policies with eBPF-based security
-  - ✅ **Cilium Dataplane** - eBPF-based networking for enhanced performance
-  - ✅ **Separate Node Pools** - System pool (CoreDNS, metrics-server) and Workload pool (applications)
-  - ✅ **Production-Grade Isolation** - Taints and labels for workload separation
-  - ✅ **Private Cluster** - API server only accessible from VNet
-  - ✅ **Azure RBAC** - Enterprise-grade access control with Azure AD integration
-- ✅ **Azure ACR** - Premium container registry with private endpoints
-- ✅ **Azure Key Vault** - Centralized secrets management with private endpoints and RBAC
-- ✅ **Virtual Network (VNet)** - Enterprise-grade network isolation with dedicated subnets
-- ✅ **Outbound Configuration** - Dynamic based on environment:
-  - **Dev**: AKS-managed load balancer egress (simpler, faster bootstrap)
-  - **Production**: NAT Gateway with predictable static egress IPs (when enabled)
-- ✅ **Private Endpoints** - Zero-trust network security (ACR & Key Vault)
-- ✅ **Private DNS Zones** - Automatic DNS resolution for private endpoints
-- ✅ **Network Security Groups (NSG)** - Network-level security controls
-- ✅ **Log Analytics** - Centralized logging and monitoring with Container Insights
-
-### 🔐 Security
-- ✅ **OIDC Authentication** - Passwordless GitHub Actions → Azure
-- ✅ **Workload Identity** - Secure pod-level Azure authentication
-- ✅ **Key Vault Integration** - Secrets mounted via CSI driver
-- ✅ **Cilium Network Policies** - Advanced Layer 7 network policies with default-deny
-- ✅ **Azure Policy Add-on** - Admission control guardrails (block :latest, require limits, restrict registries)
-- ✅ **Namespace Isolation** - Default-deny with explicit allows for DNS, Ingress, Prometheus, Argo CD
-- ✅ **Pod Security Standards** - Enforced security policies
-- ✅ **Image Scanning** - Trivy vulnerability scanning
-- ✅ **Code Analysis** - SonarCloud integration
-
-### 🚀 CI/CD
-- ✅ **Automated Builds** - Docker images on every push
-- ✅ **Security Scans** - Automated vulnerability checks
-- ✅ **Zero-Downtime Deployments** - Rolling updates with rollback
-- ✅ **Health Checks** - Automatic deployment verification
-
-### 📊 Observability
-- ✅ **Prometheus & Grafana** - Metrics and dashboards
-- ✅ **Cilium Hubble** - Network flow observability and policy verification
-- ✅ **Azure Monitor** - Cloud-native monitoring
-- ✅ **Log Analytics** - Centralized logging
-- ✅ **Alerting** - Email notifications
-
-### ⚡ High Availability
-- ✅ **Multi-Replica** - 2+ pod replicas
-- ✅ **Auto-Scaling** - Horizontal Pod Autoscaler (HPA)
-- ✅ **Pod Disruption Budgets** - Ensures minimum availability
-- ✅ **Health Probes** - Liveness and readiness checks
+**Design principle:** CI builds and records deploy intent in Git. Argo CD deploys. CI OIDC identity has **no AKS cluster access**.
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GitHub Repository                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
-│  │ CI (Build/   │  │ Security Scan│  │ Argo CD      │     │
-│  │ Push to ACR) │  │  (Trivy)     │  │  (GitOps)    │     │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘     │
-└─────────┼──────────────────┼─────────────────┼──────────────┘
-          │                  │                 │
-          ▼                  ▼                 ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Azure Cloud                              │
-│                                                             │
-│  ┌──────────────┐      ┌──────────────┐                    │
-│  │  Azure ACR   │◄─────┤  Azure AKS   │                    │
-│  │  (Registry)  │      │  (Cluster)   │                    │
-│  └──────────────┘      └──────┬───────┘                    │
-│                               │                            │
-│  ┌──────────────┐            │                            │
-│  │ Azure Key     │            │                            │
-│  │ Vault         │────────────┘                            │
-│  │ (Secrets)     │  Workload Identity                      │
-│  └──────────────┘                                          │
-│                                                             │
-│  ┌──────────────┐      ┌──────────────┐                    │
-│  │ Log Analytics│      │  Prometheus   │                    │
-│  │  Workspace   │      │  & Grafana   │                    │
-│  └──────────────┘      └──────────────┘                    │
-└─────────────────────────────────────────────────────────────┘
+Developer push (app/ or infra/)
+        │
+        ├─ app/** ──► ci.yml (quality)          ── GitHub-hosted
+        │             ci-build-push.yml (release) ── self-hosted runner (ops VM, VNet)
+        │
+        └─ infra/** ─► terraform.yml (IaC)      ── GitHub-hosted
+
+Release path (ci-build-push.yml):
+  Buildx → Trivy gate → push ola-portfolio-app:{git-sha} → ACR (private)
+        → update gitops/apps/portfolio-app/deployment.yaml
+        → bot commit to main
+        → Argo CD syncs → AKS rolling update
+        → smoke test (VM MI + kubectl + /health)
+
+Infrastructure (manual apply from ops VM):
+  Terraform → Azure (VNet, NAT, private endpoints, AKS, ACR, KV, Argo CD)
 ```
 
-### Component Flow
+### Azure platform (Terraform modules)
 
-1. **Developer** pushes code to GitHub
-2. **CI Pipeline** builds Docker image and pushes to ACR via **private endpoint** (using OIDC)
-3. **Security Pipeline** scans image for vulnerabilities
-4. **Argo CD** syncs manifests from Git and deploys to AKS (in-cluster; CI has no cluster access)
-5. **AKS Pods** access ACR via **private endpoint** (no internet exposure)
-6. **Pods** authenticate to Key Vault via **private endpoint** using Workload Identity
-7. **Secrets** are mounted via Secret Store CSI Driver
-8. **Application** runs with enterprise-grade security, network isolation, and monitoring
+| Module | Delivers |
+|--------|----------|
+| `vnet` | VNet `10.0.0.0/16`, subnets, NAT Gateway, NSGs, private DNS |
+| `aks` | Private AKS, CNI Overlay + Cilium, system + workload node pools |
+| `acr` | Premium ACR, private endpoint, optional geo-replication (prod) |
+| `keyvault` | RBAC Key Vault, private endpoint, audit logs |
+| `bastion-jumpbox` | Azure Bastion + operations VM (Trusted Execution Zone) |
+| `github-oidc` | Federated credentials for GitHub Actions |
+| `argocd` | Argo CD Helm release (HA) |
 
-### Enterprise Network Security
+### Network layout
 
-- **VNet Isolation**: All resources within isolated Virtual Network
-- **Private Endpoints**: ACR and Key Vault accessible only via private Azure network
-- **Private DNS**: Automatic DNS resolution via Azure Private DNS Zones
-- **Network Security Groups**: Network-level access controls
-- **Zero Public Exposure**: Sensitive resources not accessible from internet
+| Subnet | CIDR | Purpose |
+|--------|------|---------|
+| `aks-subnet` | 10.0.1.0/24 | AKS nodes; NAT Gateway egress |
+| `private-endpoints` | 10.0.2.0/24 | ACR + Key Vault private endpoints |
+| `AzureBastionSubnet` | 10.0.3.0/26 | Bastion |
+| `operations-subnet` | 10.0.4.0/24 | Ops VM + self-hosted GitHub runner |
+
+Outbound: **NAT Gateway + `userDefinedRouting`** when `enable_nat_gateway = true` (default in tfvars).
+
+### State management
+
+- Remote backend: Azure Blob (`olaportfolio001` / `tfstate`)
+- Auth: Azure AD OIDC (`use_azuread_auth`, `use_oidc`)
+- Per-environment keys via `backends/{dev,staging,prod}.hcl` — see [infra/terraform/envs/README.md](infra/terraform/envs/README.md)
 
 ---
 
-## 📦 Prerequisites
+## CI/CD Pipelines
 
-Before starting, ensure you have:
+Three **independent** workflows, triggered by path filters on `main` and `develop`.
+
+### 1. CI — Quality (`.github/workflows/ci.yml`)
+
+| | |
+|--|--|
+| **Trigger** | `app/**` on PR and push |
+| **Runner** | `ubuntu-latest` |
+| **Steps** | `npm ci` → build → tests → SonarCloud (if `SONAR_TOKEN` set) |
+| **Purpose** | Shift-left quality gate before/at merge |
+
+### 2. CI — Build and Push (`.github/workflows/ci-build-push.yml`)
+
+| | |
+|--|--|
+| **Trigger** | `app/**` on push (not PR); `workflow_dispatch` |
+| **Runner** | `self-hosted` (operations VM in VNet) |
+| **Auth** | GitHub OIDC → ACR push; VM managed identity for smoke test |
+| **Steps** | Buildx + ACR cache → **Trivy** (CRITICAL/HIGH gate) → push `{git-sha}` tag → update GitOps manifest → bot commit → **smoke test** |
+| **Purpose** | Verified artifact supply + GitOps intent + runtime proof |
+
+GitOps bot commits (`gitops/**` only) do **not** re-trigger this workflow.
+
+### 3. Terraform Validation (`.github/workflows/terraform.yml`)
+
+| | |
+|--|--|
+| **Trigger** | `infra/**` on PR and push |
+| **Runner** | `ubuntu-latest` |
+| **Jobs** | fmt → validate → **Checkov** → plan (push only, OIDC to state) |
+| **Plan** | `-refresh=false` (private AKS API unreachable from hosted runners) |
+| **Apply** | **Not in CI** — manual from ops VM |
+
+### GitOps (Argo CD)
+
+- Application: `gitops/apps/portfolio-app.yaml`
+- Manifests: `gitops/apps/portfolio-app/deployment.yaml`
+- Automated sync with prune + selfHeal; immutable image tags only (no `:latest` in CI)
+
+See [GITOPS_ARCHITECTURE.md](GITOPS_ARCHITECTURE.md) and [docs/ADR-ACR-private-build-strategy.md](docs/ADR-ACR-private-build-strategy.md).
+
+---
+
+## Repository Structure
+
+```
+.
+├── app/                          # React portfolio (Dockerfile → nginx:8080)
+├── gitops/
+│   └── apps/portfolio-app/       # Argo CD deployment manifests (primary deploy path)
+├── k8s/                          # Hardened reference manifests (HPA, PDB, netpol)
+├── infra/terraform/
+│   ├── modules/                  # vnet, aks, acr, keyvault, github-oidc, argocd, bastion-jumpbox
+│   ├── envs/
+│   │   ├── dev/                  # Live dev tfvars (terraform.tfvars gitignored)
+│   │   ├── staging/              # Codified, not deployed by default
+│   │   └── prod/                 # Codified + ACR geo-replication (northeurope)
+│   ├── backends/                 # Per-env state key overrides
+│   └── enterprise-deploy.ps1     # Staged 5-phase apply
+├── .github/workflows/
+│   ├── ci.yml                    # Quality
+│   ├── ci-build-push.yml         # Release + GitOps + smoke test
+│   └── terraform.yml             # IaC validation
+├── docs/
+│   ├── ARCHITECTURE_AND_INTERVIEW_PRESENTATION.md
+│   ├── ADR-ACR-private-build-strategy.md
+│   └── OIDC_SETUP.md
+└── scripts/                      # Ops helpers (vm-resume-ops.sh, validate-terraform-plan.ps1)
+```
+
+---
+
+## Prerequisites
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| **Azure CLI** | Latest | Azure authentication and management |
-| **Terraform** | >= 1.0 | Infrastructure provisioning |
-| **kubectl** | Latest | Kubernetes cluster management |
-| **Docker** | Latest | Local image building |
-| **Helm** | >= 3.0 | Kubernetes package management |
+| Azure CLI | Latest | Authentication, AKS credentials |
+| Terraform | >= 1.0 (CI pins 1.10.5) | Infrastructure |
+| kubectl + kubelogin | Latest | Private AKS access |
+| Docker | Latest | Local builds; required on ops VM runner |
+| Helm | >= 3.0 | Argo CD, monitoring add-ons |
 
-### Azure Requirements
+**Azure:** Subscription with Contributor access; ability to create AKS, ACR, Key Vault, VNet.
 
-- ✅ Azure subscription with **Contributor** or **Owner** role
-- ✅ Azure AD permissions for RBAC configuration
-- ✅ Ability to create: Resource Groups, AKS, ACR, Key Vault
-
-### GitHub Requirements
-
-- ✅ GitHub repository
-- ✅ GitHub Actions enabled
-- ✅ Access to repository settings/secrets
+**GitHub:** Repository secrets — `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `ACR_NAME`, `RESOURCE_GROUP`; optional `SONAR_TOKEN`.
 
 ---
 
-## 🚀 Complete Setup Walkthrough
+## Quick Start
 
-### Phase 1: Infrastructure Setup
+**Fastest path:** [docs/QUICK_START.md](docs/QUICK_START.md) — two-phase bootstrap (laptop → ops VM).
 
-#### 1.1 Configure Terraform Variables
+### 1. Configure environment
 
-Edit `infra/terraform/envs/dev/terraform.tfvars`:
-
-```hcl
-# Basic Configuration
-resource_group_name = "ola-rg-prod"
-location            = "uksouth"
-aks_name            = "ola-aks-prod"
-acr_name            = "olaacr01prod"  # Must be globally unique
-key_vault_name      = "ola-kv-prod"   # Must be globally unique
-
-# GitHub OIDC Configuration (Recommended)
-enable_github_oidc = true
-github_repository  = "OlatunbosunIbiyinka/Olatunbosun-portfolio-project"
-github_branch      = "main"
-
-# Node Pool Configuration
-default_node_pool_vm_size   = "Standard_D2s_v3"
-default_node_pool_node_count = 2
-min_node_count              = 2
-max_node_count              = 5
-
-# Security Configuration
-enable_azure_policy    = true
-disable_local_accounts = true
-enable_azure_rbac      = true
-
-# Tags
-tags = {
-  Environment = "production"
-  Project     = "portfolio"
-  ManagedBy   = "Terraform"
-}
+```bash
+cp infra/terraform/envs/dev/terraform.tfvars.example \
+   infra/terraform/envs/dev/terraform.tfvars
+# Names (acr_name, key_vault_name) are pre-set for this project; change only if taken globally
 ```
 
-#### 1.2 Deploy Infrastructure
+### 2. Phase 1 — Deploy core infra (from laptop)
+
+```powershell
+cd infra/terraform
+.\bootstrap-dev.ps1
+```
+
+Applies with `enable_argocd=false` and `enable_aks_monitoring_addon=false` (~2–3 hours).
+
+**Provisioned:** Resource Group, VNet, NAT, ACR (private), Key Vault (private), private AKS, Bastion + ops VM, GitHub OIDC.
+
+### 3. Phase 2 — GitOps + monitoring (from ops VM via Bastion)
+
+```bash
+./scripts/phase2-on-vm.sh
+```
+
+Enables Argo CD, Container Insights, kubectl, and registers the GitOps application.
+
+### 4. Configure GitHub secrets
 
 ```bash
 cd infra/terraform
-
-# Initialize Terraform
-terraform init
-
-# Review the plan
-terraform plan -var-file="envs/dev/terraform.tfvars" -out=tfplan
-
-# Apply infrastructure
-terraform apply tfplan
-```
-
-**What gets created:**
-- Resource Group
-- Virtual Network (VNet) with subnets
-- Log Analytics Workspace
-- Azure Container Registry (ACR) with private endpoint
-- Azure Key Vault with private endpoint and RBAC
-- Azure Kubernetes Service (AKS) with private cluster
-- Workload Identity for pod-level authentication
-- GitHub OIDC App Registration and federated credentials
-- Role assignments for ACR and Key Vault access
-
-**Time Estimate:**
-- **Dev environment**: ~15-20 minutes (NAT Gateway disabled, simpler outbound)
-- **Production environment**: ~30-45 minutes (with NAT Gateway, use staged deployment)
-
-#### 1.3 Access Private AKS Cluster
-
-Since the cluster is private, access it via:
-
-**Option 1: Azure Cloud Shell (Quick Test)**
-```bash
-# Open: https://shell.azure.com
-az aks get-credentials --resource-group ola-rg-dev --name ola-aks-dev
-kubectl get nodes
-```
-
-**Option 2: Azure Bastion + Jumpbox (Production)**
-- Enable in `terraform.tfvars`: `enable_bastion = true`
-- Connect via Azure Portal → Virtual Machines → Connect → Bastion
-- Tools are pre-installed on jumpbox
-
----
-
-### Phase 2: GitHub OIDC Setup (Recommended)
-
-OIDC eliminates the need to store service principal credentials in GitHub.
-
-#### 2.1 Get OIDC Configuration
-
-```bash
-cd infra/terraform
-
-# Get OIDC values
 terraform output github_oidc_client_id
 terraform output github_oidc_tenant_id
 terraform output github_oidc_subscription_id
 ```
 
-#### 2.2 Configure GitHub Secrets
+Add outputs plus `ACR_NAME` and `RESOURCE_GROUP` to GitHub Actions secrets. See [docs/OIDC_SETUP.md](docs/OIDC_SETUP.md).
 
-Go to: `https://github.com/<owner>/<repo>/settings/secrets/actions`
-
-Add these secrets:
-
-| Secret Name | Value Source |
-|------------|--------------|
-| `AZURE_CLIENT_ID` | `terraform output github_oidc_client_id` |
-| `AZURE_TENANT_ID` | `terraform output github_oidc_tenant_id` |
-| `AZURE_SUBSCRIPTION_ID` | `terraform output github_oidc_subscription_id` |
-
-**Or use the automated script:**
+### 5. Install self-hosted runner (ops VM)
 
 ```bash
-./scripts/setup-github-oidc.sh OlatunbosunIbiyinka/Olatunbosun-portfolio-project ola-rg-prod
+# On aks-operations-vm (via Bastion)
+./scripts/install-github-runner.sh
 ```
 
-📖 **Detailed Guide**: See [OIDC Setup Documentation](docs/OIDC_SETUP.md)
+Required for CI builds — private ACR is unreachable from GitHub-hosted runners.
+
+### 6. Deploy via CI (preferred)
+
+Push a change to `app/**` on `main` — the release pipeline builds, scans, pushes to ACR, updates GitOps, and Argo CD deploys automatically.
+
+**Manual fallback:** Update image in `gitops/apps/portfolio-app/deployment.yaml` and push — Argo syncs.
 
 ---
 
-### Phase 3: Key Vault Configuration
+## Multi-Environment
 
-#### 3.1 Store Secrets in Key Vault
-
-```bash
-# Get Key Vault name
-KEY_VAULT_NAME=$(cd infra/terraform && terraform output -raw key_vault_name)
-
-# Store secrets
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "acr-username" --value "<value>"
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "acr-password" --value "<value>"
-az keyvault secret set --vault-name $KEY_VAULT_NAME --name "sonar-token" --value "<value>"
-```
-
-**Or use the automated script:**
+| Environment | Var file | State key | Status |
+|-------------|----------|-----------|--------|
+| **dev** | `envs/dev/terraform.tfvars` | `terraform.tfstate` | Bootstrap via `bootstrap-dev.ps1` |
+| **staging** | `envs/staging/terraform.tfvars.example` | `staging/terraform.tfstate` | Codified — ready to plan/apply |
+| **prod** | `envs/prod/terraform.tfvars.example` | `prod/terraform.tfstate` | Codified — includes ACR geo-rep to `northeurope` |
 
 ```bash
-./scripts/setup-keyvault-secrets.sh <key-vault-name>
+# Staging
+terraform init -reconfigure -backend-config=backends/staging.hcl
+terraform plan -var-file="envs/staging/terraform.tfvars"
+
+# Production
+terraform init -reconfigure -backend-config=backends/prod.hcl
+terraform plan -var-file="envs/prod/terraform.tfvars"
 ```
 
-#### 3.2 Get Workload Identity Details
-
-```bash
-cd infra/terraform
-
-# Get values needed for Kubernetes manifests
-WORKLOAD_IDENTITY_CLIENT_ID=$(terraform output -raw workload_identity_client_id)
-KEY_VAULT_NAME=$(terraform output -raw key_vault_name)
-TENANT_ID=$(az account show --query tenantId -o tsv)
-```
-
-#### 3.3 Update Kubernetes Manifests
-
-Update `k8s/serviceaccount.yaml`:
-
-```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: workload-identity-sa
-  namespace: default
-  annotations:
-    azure.workload.identity/client-id: "<WORKLOAD_IDENTITY_CLIENT_ID>"
-```
-
-Update `k8s/secretproviderclass.yaml`:
-
-```yaml
-spec:
-  parameters:
-    clientID: "<WORKLOAD_IDENTITY_CLIENT_ID>"
-    keyvaultName: "<KEY_VAULT_NAME>"
-    tenantId: "<TENANT_ID>"
-```
+Full workflow: [infra/terraform/envs/README.md](infra/terraform/envs/README.md)
 
 ---
 
-### Phase 4: Kubernetes Add-ons
+## Security Model
 
-#### 4.1 Install Secret Store CSI Driver
-
-```bash
-helm repo add secrets-store-csi-driver https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts
-helm install csi-secrets-store secrets-store-csi-driver/secrets-store-csi-driver \
-  --namespace kube-system \
-  --set syncSecret.enabled=true
-
-# Verify installation
-kubectl get pods -n kube-system | grep csi-secrets-store
-```
-
-#### 4.2 Verify Workload Identity (if not already enabled)
-
-```bash
-az aks show --name ola-aks-prod --resource-group ola-rg-prod \
-  --query oidcIssuerProfile.enabled
-
-# If false, enable it:
-az aks update --name ola-aks-prod --resource-group ola-rg-prod \
-  --enable-oidc-issuer --enable-workload-identity
-```
-
-#### 4.3 Install NGINX Ingress (Optional)
-
-```bash
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx \
-  --create-namespace \
-  --set controller.service.type=LoadBalancer
-```
+| Control | Implementation |
+|---------|----------------|
+| **No long-lived cloud secrets in CI** | GitHub OIDC federated credentials |
+| **CI cannot deploy to cluster** | `enable_aks_access = false` on OIDC module |
+| **Private registry** | ACR Premium, private endpoint, public access disabled |
+| **Private cluster** | AKS API only in VNet; admin via Bastion + ops VM |
+| **Immutable artifacts** | Image tags = full git SHA |
+| **Supply chain gates** | Trivy (images), Checkov (IaC), SonarCloud (code) |
+| **Secrets** | Key Vault + Workload Identity + CSI driver |
+| **Network** | Cilium policies, NSGs, private endpoints, NAT egress |
 
 ---
 
-### Phase 5: Application Deployment
-
-#### 5.1 Build and Push Docker Image
-
-```bash
-cd app
-
-# Get ACR name
-ACR_NAME=$(cd ../infra/terraform && terraform output -raw acr_login_server | cut -d'.' -f1)
-
-# Login to ACR
-az acr login --name $ACR_NAME
-
-# Build and push
-docker build -t $ACR_NAME.azurecr.io/ola-portfolio-app:latest .
-docker push $ACR_NAME.azurecr.io/ola-portfolio-app:latest
-```
-
-#### 5.2 Deploy to Kubernetes
-
-```bash
-# Update deployment with your image
-sed -i "s|IMAGE_PLACEHOLDER|$ACR_NAME.azurecr.io/ola-portfolio-app:latest|g" k8s/deployment.yaml
-
-# Apply all manifests
-kubectl apply -f k8s/serviceaccount.yaml
-kubectl apply -f k8s/secretproviderclass.yaml
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/hpa.yaml
-kubectl apply -f k8s/pdb.yaml
-kubectl apply -f k8s/networkpolicy.yaml
-
-# Or apply all at once
-kubectl apply -f k8s/
-```
-
-#### 5.3 Verify Deployment
-
-```bash
-# Check pod status
-kubectl get pods -l app=ola-portfolio-app
-
-# Check service
-kubectl get svc ola-portfolio-service
-
-# Check HPA
-kubectl get hpa
-
-# Verify secrets are mounted
-POD_NAME=$(kubectl get pods -l app=ola-portfolio-app -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -it $POD_NAME -- ls -la /mnt/secrets-store
-
-# Get service IP
-kubectl get svc ola-portfolio-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-```
-
----
-
-## ✨ Key Features
-
-### 🔐 Security Features
-
-| Feature | Description | Benefit |
-|---------|-------------|---------|
-| **OIDC Authentication** | Passwordless GitHub Actions → Azure | No secrets to manage |
-| **Workload Identity** | Pod-level Azure authentication | Secure service access |
-| **Key Vault** | Centralized secrets management with RBAC | No secrets in code/images |
-| **Cilium Network Policies** | Advanced Layer 7 network policies | Network isolation with eBPF |
-| **Azure RBAC** | Enterprise-grade access control | Azure AD integration |
-| **Private Cluster** | API server only accessible from VNet | Zero public exposure |
-| **Private Endpoints** | ACR and Key Vault via private network | No internet exposure |
-| **Azure Policy** | Admission control guardrails | Compliance ready |
-| **Image Scanning** | Trivy vulnerability scanning | Security assurance |
-| **Code Analysis** | SonarCloud integration | Code quality |
-
-### ⚡ High Availability Features
-
-| Feature | Description |
-|---------|-------------|
-| **Multi-Replica** | 2+ pod replicas for redundancy |
-| **Auto-Scaling** | HPA scales based on CPU/memory |
-| **Pod Disruption Budgets** | Ensures minimum availability during updates |
-| **Health Probes** | Automatic pod health monitoring |
-| **Rolling Updates** | Zero-downtime deployments |
-
-### 📊 Observability Features
-
-| Feature | Description |
-|---------|-------------|
-| **Prometheus** | Metrics collection |
-| **Grafana** | Dashboards and visualization |
-| **Azure Monitor** | Cloud-native monitoring |
-| **Log Analytics** | Centralized logging |
-| **Alerting** | Email notifications |
-
----
-
-## 📚 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [Deployment Guide](DEPLOYMENT.md) | Detailed deployment instructions |
-| [Troubleshooting Guide](TROUBLESHOOTING.md) | Common errors and solutions (19 sections) |
-| [Project Pitch Script](PROJECT_PITCH_SCRIPT.md) | **Complete project explanation & recruiter pitch** - Word-for-word script for interviews |
-| [Safe Destroy Guide](SAFE_DESTROY_GUIDE.md) | Step-by-step guide for safely destroying infrastructure |
-| [CloudShell Resource Groups Explained](CLOUDSHELL_RESOURCE_GROUP_EXPLAINED.md) | **Why you see temporary RGs** - Understanding CloudShell connection resources |
-| [Enterprise Grade Summary](ENTERPRISE_GRADE_SUMMARY.md) | Overview of enterprise security features |
-| [GitOps Architecture](GITOPS_ARCHITECTURE.md) | Complete GitOps deployment architecture |
-| [Operations VM Setup](VM_SETUP_FIX.md) | Operations VM (Trusted Execution Zone) documentation |
-| [OIDC Setup Guide](docs/OIDC_SETUP.md) | Complete OIDC authentication setup |
-| [Azure AD Group Setup](AZURE_AD_GROUP_SETUP.md) | Setting up Azure AD groups for VM administration |
-| [Quick Reference](QUICK_REFERENCE.md) | Common commands and operations |
-| [Production Checklist](PRODUCTION_CHECKLIST.md) | Pre-deployment verification |
+| [Architecture & Interview Guide](docs/ARCHITECTURE_AND_INTERVIEW_PRESENTATION.md) | End-to-end architecture, CI/CD, DR, presentation script |
+| [Production Environment (target state)](docs/PRODUCTION_ENVIRONMENT.md) | What would be implemented for full prod — end-to-end |
+| [GitOps Architecture](GITOPS_ARCHITECTURE.md) | Argo CD workflow and principles |
+| [ADR: Private ACR Build Strategy](docs/ADR-ACR-private-build-strategy.md) | Why self-hosted runner in VNet |
+| [OIDC Setup](docs/OIDC_SETUP.md) | GitHub ↔ Azure federation |
+| [Multi-Environment](infra/terraform/envs/README.md) | Dev / staging / prod tfvars and state |
+| [Deployment Guide](DEPLOYMENT.md) | Detailed deploy and rollback |
+| [Troubleshooting](TROUBLESHOOTING.md) | Common errors and recovery |
+| [Production Checklist](PRODUCTION_CHECKLIST.md) | Pre-prod readiness gates |
+| [Enterprise Deploy](infra/terraform/enterprise-deploy.ps1) | Staged Terraform apply |
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
-### Quick Fixes
+| Issue | Fix |
+|-------|-----|
+| CI OIDC / ACR 403 | Ensure federated credential matches branch; runner on ops VM in VNet |
+| `terraform plan` timeout from laptop | Use `scripts/validate-terraform-plan.ps1` (`-refresh=false`) or plan from ops VM |
+| Cannot reach private AKS API | Connect via Bastion → ops VM; use `kubelogin` |
+| Pods CrashLoopBackOff | Verify probes hit `/health:8080` — see `app/nginx.conf` and GitOps deployment |
+| State lock | `terraform force-unlock <id>` |
+| Resources deleted in portal | `infra/terraform/cleanup-after-portal-delete.ps1` |
 
-**AKS Cluster Creation Timeout:**
-- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) Section 18: "AKS VMExtensionProvisioningError on vmssCSE"
-- Dev environment uses simplified outbound (NAT Gateway disabled) to avoid bootstrap timeouts
-- Production: Use staged deployment when enabling NAT Gateway (Section 19)
-
-**State Lock Errors:**
-```bash
-terraform force-unlock <lock-id>
-```
-
-**Resources Already Exist:**
-```bash
-# Import existing resource into state
-terraform import -var-file="envs/dev/terraform.tfvars" <resource_address> <azure_resource_id>
-```
-
-**Cleanup After Manual Deletion:**
-```bash
-cd infra/terraform
-.\cleanup-after-portal-delete.ps1
-```
-
-### Common Issues
-
-#### Pods Not Starting
-```bash
-kubectl describe pod <pod-name>
-kubectl logs <pod-name>
-kubectl get events --sort-by='.lastTimestamp'
-```
-
-#### Secrets Not Mounting
-```bash
-kubectl describe secretproviderclass azure-kv-secrets
-kubectl logs -n kube-system -l app=secrets-store-csi-driver
-```
-
-#### Cannot Connect to Private AKS Cluster
-- Use Azure Cloud Shell or Azure Bastion + Jumpbox
-- See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) Section 11
-
-📖 **Complete Troubleshooting Guide**: See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) with 19 documented solutions
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for full runbooks.
 
 ---
 
-## 🎓 Learning Resources
+## Key Design Decisions
 
-- [Azure Kubernetes Service Docs](https://docs.microsoft.com/azure/aks/)
-- [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [GitHub Actions OIDC](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. **GitOps separation** — CI supplies images; Argo CD reconciles cluster state from Git.
+2. **Self-hosted runner** — Private ACR requires in-VNet build path (documented ADR).
+3. **Plan-only Terraform in CI** — Apply from Trusted Execution Zone; limits blast radius.
+4. **Three path-triggered pipelines** — Quality, release, and IaC run independently.
+5. **Immutable SHA tags** — Auditable rollback via Git revert.
 
 ---
 
-## 📝 License
-
-This project is licensed under the MIT License.
-
----
-
-## 👨‍💻 Author
+## Author
 
 **Olatunbosun Ibiyinka**
 
-- 🔗 [LinkedIn](https://linkedin.com/in/yourprofile)
-- 🐙 [GitHub](https://github.com/OlatunbosunIbiyinka)
-- 📧 [Email](mailto:your.email@example.com)
+- [GitHub](https://github.com/OlatunbosunIbiyinka)
+- [LinkedIn](https://linkedin.com/in/yourprofile)
 
 ---
 
-## 🙏 Acknowledgments
+## License
 
-- Azure Kubernetes Service team
-- Terraform Azure provider maintainers
-- Kubernetes community
-- Open source contributors
+MIT License.
 
 ---
 
-## ⚠️ Important Notes
-
-- **Production Ready**: This setup is production-grade. Test in a development environment first.
-- **Costs**: Monitor Azure costs. Use appropriate VM sizes for your needs.
-- **Security**: Review all security configurations before production deployment.
-- **Backups**: Implement backup strategies for critical data.
-
----
-
-**⭐ If you find this project helpful, please give it a star!**
-
----
-
-*Last updated: February 2026 | Production-Grade Azure Kubernetes Deployment*
-
----
-
-## 🛠️ Infrastructure Configuration
-
-### Current Configuration (Dev Environment)
-
-**Network:**
-- ✅ Azure CNI Overlay with Cilium dataplane
-- ✅ Private AKS cluster (API server only accessible from VNet)
-- ✅ Private endpoints for ACR and Key Vault
-- ✅ NAT Gateway **disabled** for dev (simplified outbound via load balancer)
-- ✅ Private DNS Zones for automatic DNS resolution
-
-**Security:**
-- ✅ Azure RBAC with Azure AD group integration
-- ✅ Workload Identity for pod-level authentication
-- ✅ GitHub OIDC for passwordless CI/CD
-- ✅ Local accounts disabled (Azure AD only)
-
-**For Production:**
-- Enable NAT Gateway: `enable_nat_gateway = true` in `envs/prod/terraform.tfvars`
-- Use staged deployment (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md) Section 19)
-- Enable Azure Bastion: `enable_bastion = true` for secure access
-
-### Helper Scripts
-
-Located in `infra/terraform/`:
-- `cleanup-after-portal-delete.ps1` - Clean up Terraform state after manual resource deletion
-- `handle-aks-timeout.ps1` - Check AKS cluster status and recover from timeouts
-- `enterprise-deploy.ps1` - Staged deployment script for production
+*Last updated: June 2026*

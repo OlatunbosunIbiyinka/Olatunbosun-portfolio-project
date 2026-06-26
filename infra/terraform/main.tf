@@ -128,6 +128,7 @@ module "acr" {
   resource_group_name           = azurerm_resource_group.rg.name
   sku                           = "Premium" # Enterprise-grade: Premium SKU for advanced features
   admin_enabled                 = false
+  georeplications               = var.acr_georeplications
   enable_private_endpoint       = var.enable_acr_private_endpoint
   private_endpoint_subnet_id    = module.vnet.private_endpoint_subnet_id
   private_dns_zone_id           = var.enable_private_dns ? module.vnet.acr_private_dns_zone_id : null
@@ -178,6 +179,7 @@ module "aks" {
   outbound_type              = var.enable_nat_gateway ? "userDefinedRouting" : "loadBalancer"
   kubernetes_version         = var.kubernetes_version
   enable_log_analytics       = var.enable_log_analytics
+  enable_aks_monitoring_addon = var.enable_aks_monitoring_addon
   log_analytics_workspace_id = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
   oidc_issuer_enabled        = true
   workload_identity_enabled  = true
@@ -216,17 +218,24 @@ module "aks" {
   tags                                         = var.tags
 }
 
-# Argo CD (optional). Kube providers use module.aks kube_config when the cluster exists in state so refresh
-# works even if enable_argocd=false (e.g. tearing down or stale argocd state). Dummy host only when AKS
-# is not in state yet (fresh plan after full destroy). enable_argocd still gates module.argocd only.
-locals {
-  argocd_kube_host_raw = try(module.aks.kube_config_host, "")
-  argocd_kube_ca_b64   = try(module.aks.kube_config_cluster_ca_certificate, "")
-  argocd_has_cluster   = length(compact([local.argocd_kube_host_raw])) > 0
+# Argo CD (optional). Kube/Helm providers must NOT reference module.aks outputs when enable_argocd=false
+# — those values are unknown until apply/import and break plan/import (e.g. AKS still Creating in Azure).
+# Phase 1 (laptop): enable_argocd=false → placeholder provider config.
+# Phase 2 (ops VM): enable_argocd=true → read live cluster via azurerm data source (works once cluster exists in Azure).
+data "azurerm_kubernetes_cluster" "argocd" {
+  count = var.enable_argocd ? 1 : 0
 
-  argocd_provider_host = local.argocd_has_cluster ? local.argocd_kube_host_raw : "https://127.0.0.1:443"
-  argocd_provider_ca   = local.argocd_has_cluster ? base64decode(local.argocd_kube_ca_b64) : ""
-  argocd_insecure      = !local.argocd_has_cluster
+  name                = var.aks_name
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+locals {
+  k8s_use_live_cluster = var.enable_argocd
+  argocd_provider_host = local.k8s_use_live_cluster ? data.azurerm_kubernetes_cluster.argocd[0].kube_config[0].host : "https://127.0.0.1:443"
+  argocd_provider_ca = local.k8s_use_live_cluster ? base64decode(
+    data.azurerm_kubernetes_cluster.argocd[0].kube_config[0].cluster_ca_certificate
+  ) : ""
+  argocd_insecure = !local.k8s_use_live_cluster
 }
 
 provider "kubernetes" {
@@ -235,7 +244,7 @@ provider "kubernetes" {
   insecure               = local.argocd_insecure
 
   dynamic "exec" {
-    for_each = local.argocd_has_cluster ? [1] : []
+    for_each = local.k8s_use_live_cluster ? [1] : []
     content {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "kubelogin"
@@ -258,7 +267,7 @@ provider "helm" {
     insecure               = local.argocd_insecure
 
     dynamic "exec" {
-      for_each = local.argocd_has_cluster ? [1] : []
+      for_each = local.k8s_use_live_cluster ? [1] : []
       content {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "kubelogin"

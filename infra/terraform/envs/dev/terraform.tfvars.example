@@ -1,5 +1,4 @@
-# Example Terraform variables file
-# Copy this file to terraform.tfvars and update with your values
+# Development environment — copy to terraform.tfvars. Multi-env: see envs/README.md
 
 # Resource Group Configuration
 resource_group_name = "ola-rg-dev"
@@ -53,7 +52,8 @@ workload_node_pools = {
 }
 
 # ACR Configuration
-acr_name = "olaacr01dev"  # Must be globally unique, lowercase alphanumeric only
+acr_name            = "olaacr01dev" # Must be globally unique, lowercase alphanumeric only
+acr_georeplications = []            # Dev: no geo-replication (prod uses northeurope — see envs/prod/)
 
 # Key Vault Configuration (Enterprise-Grade)
 key_vault_name              = "ola-kv-dev"  # Must be globally unique
@@ -90,16 +90,25 @@ enable_nat_gateway = true  # Enterprise-grade: Enabled for predictable egress IP
 # Recommended for production environments with private AKS clusters
 enable_bastion = true
 jumpbox_vm_name = "aks-operations-vm"
-enable_argocd = true
+# Phase 1 (laptop): false — private AKS API unreachable. Phase 2 (ops VM): true
+enable_argocd = false
+# Phase 1: skip VM extension tool installs (faster, fewer timeouts). Install on VM via setup-phase2-tools.sh
+jumpbox_install_docker        = false
+jumpbox_install_terraform     = false
+jumpbox_install_nodejs        = false
+jumpbox_install_github_runner = false
 # jumpbox_vm_size = "Standard_B2s"  # Sufficient for kubectl operations
 # jumpbox_admin_username = "azureuser"
 # github_repository_url = "https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project"
-# jumpbox_install_github_runner = false  # or: ./scripts/install-github-runner.sh on the VM
-# jumpbox_ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC..."  # Your SSH public key (recommended)
+# jumpbox_ssh_public_key — omit entirely for Azure AD login; do NOT set to ""
+# jumpbox_ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC..."  # optional legacy SSH key
 # bastion_sku = "Standard"  # Standard recommended (supports copy/paste, IP connect, tunneling)
 
 # Monitoring Configuration
 enable_log_analytics = true
+# Bootstrap: false on first AKS create (avoids Container Insights Helm timeout on private cluster).
+# After cluster is Succeeded, set true and terraform apply again.
+enable_aks_monitoring_addon = false
 
 # Security Configuration
 enable_azure_policy    = true

@@ -88,8 +88,10 @@ resource "azurerm_subnet_network_security_group_association" "jumpbox" {
 }
 
 locals {
-  # Treat empty string like null so we never pass admin_ssh_key with a null/empty public_key (AzureRM requires a real key).
-  jumpbox_ssh_public_key_trimmed = trimspace(coalesce(var.jumpbox_ssh_public_key, ""))
+  # Treat null and "" as no key (Azure AD + generated password). coalesce("", "") fails in Terraform.
+  jumpbox_ssh_public_key_trimmed = (
+    var.jumpbox_ssh_public_key != null ? trimspace(var.jumpbox_ssh_public_key) : ""
+  )
   jumpbox_ssh_public_key_effective = (
     local.jumpbox_ssh_public_key_trimmed != "" ? local.jumpbox_ssh_public_key_trimmed : null
   )

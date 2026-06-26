@@ -1,5 +1,7 @@
 # Cluster-wide Let's Encrypt issuer for olatunbosun.dev TLS
-# Apply once after cert-manager is installed (see docs/DOMAIN_SETUP.md)
+# ACME registration and API calls egress via NAT Gateway (UDR on aks-subnet).
+# HTTP-01 challenge answers inbound on the ingress-nginx public LoadBalancer.
+# Apply once after cert-manager is installed from the ops VM — see docs/DOMAIN_SETUP.md
 
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer

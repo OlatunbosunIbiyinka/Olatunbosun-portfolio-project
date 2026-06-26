@@ -18,6 +18,12 @@ variable "acr_name" {
   type        = string
 }
 
+variable "acr_georeplications" {
+  description = "Azure regions for ACR geo-replication (Premium SKU only). Use for production DR — e.g. [\"northeurope\"] as UK paired region."
+  type        = list(string)
+  default     = []
+}
+
 variable "key_vault_name" {
   description = "Key Vault name (must be globally unique)"
   type        = string
@@ -70,6 +76,12 @@ variable "enable_log_analytics" {
   description = "Enable Log Analytics workspace"
   type        = bool
   default     = true
+}
+
+variable "enable_aks_monitoring_addon" {
+  description = "Attach Container Insights (oms_agent) to AKS. Set false for initial cluster bootstrap to avoid Helm timeout on private clusters; enable in a second apply once the cluster is Succeeded."
+  type        = bool
+  default     = false
 }
 
 variable "enable_azure_policy" {
@@ -464,6 +476,11 @@ variable "jumpbox_ssh_public_key" {
   type        = string
   default     = null
   sensitive   = true
+
+  validation {
+    condition     = var.jumpbox_ssh_public_key == null || trimspace(var.jumpbox_ssh_public_key) != ""
+    error_message = "jumpbox_ssh_public_key must be omitted/null or a non-empty SSH public key — do not set jumpbox_ssh_public_key = \"\" in terraform.tfvars."
+  }
 }
 
 variable "jumpbox_vm_name" {

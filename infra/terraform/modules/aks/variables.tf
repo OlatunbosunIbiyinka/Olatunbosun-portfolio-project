@@ -246,9 +246,15 @@ variable "private_cluster_enabled" {
 }
 
 variable "enable_log_analytics" {
-  description = "Enable Log Analytics"
+  description = "Enable Log Analytics integration (oms_agent addon when enable_aks_monitoring_addon is true)"
   type        = bool
   default     = true
+}
+
+variable "enable_aks_monitoring_addon" {
+  description = "Install oms_agent on AKS (Container Insights). Defer on first create if cluster bootstrap times out."
+  type        = bool
+  default     = false
 }
 
 variable "log_analytics_workspace_id" {

@@ -1,0 +1,101 @@
+# Production environment — codified, not deployed by default.
+# Copy to terraform.tfvars and apply with:
+#   terraform init -reconfigure -backend-config=backends/prod.hcl
+#   terraform apply -var-file="envs/prod/terraform.tfvars"
+#
+# Before first prod apply:
+#   - Enable blob versioning + soft delete on tfstate storage account (bootstrap)
+#   - Set admin_group_object_ids / operator_group_object_ids to Azure AD groups
+#   - Consider provider feature prevent_deletion_if_contains_resources = true in main.tf
+#
+# See envs/README.md for multi-environment workflow and DR posture.
+
+resource_group_name = "ola-rg-prod"
+location            = "uksouth"
+
+aks_name            = "ola-aks-prod"
+kubernetes_version  = null
+
+default_node_pool_name            = "system"
+default_node_pool_vm_size         = "Standard_D2s_v3"
+default_node_pool_node_count      = 2
+default_node_pool_os_disk_size_gb = 128
+enable_auto_scaling               = true
+min_node_count                    = 2
+max_node_count                    = 5
+system_pool_taints                = ["CriticalAddonsOnly=true:NoSchedule"]
+
+workload_node_pools = {
+  "workload" = {
+    vm_size             = "Standard_D4s_v3"
+    node_count          = 2
+    os_disk_size_gb     = 128
+    os_sku              = "Ubuntu"
+    enable_auto_scaling = true
+    min_count           = 2
+    max_count           = 10
+    max_pods            = 30
+    node_labels = {
+      "pool.type"               = "user"
+      "workload"                = "application"
+      "node.kubernetes.io/role" = "workload"
+    }
+    node_taints = []
+    mode        = "User"
+  }
+}
+
+acr_name = "olaacr01prod"
+# DR: replicate registry to UK paired region (Premium SKU required — set in module)
+acr_georeplications = ["northeurope"]
+
+key_vault_name                   = "ola-kv-prod"
+key_vault_sku                    = "standard"
+key_vault_purge_protection         = true
+key_vault_public_access            = false
+key_vault_network_default_action   = "Deny"
+key_vault_network_bypass           = "None"
+key_vault_allowed_ips              = []
+
+enable_acr_private_endpoint      = true
+enable_keyvault_private_endpoint = true
+acr_public_network_access        = false
+enable_private_dns               = true
+enable_nsg                       = true
+enable_nat_gateway               = true
+
+enable_bastion  = true
+jumpbox_vm_name = "aks-operations-vm-prod"
+enable_argocd   = true
+
+enable_log_analytics   = true
+enable_azure_policy    = true
+disable_local_accounts = true
+enable_azure_rbac      = true
+# Replace with your Azure AD group Object IDs before apply
+admin_group_object_ids    = [] # e.g. ["<aks-admins-group-object-id>"]
+operator_group_object_ids = [] # e.g. ["<aks-operators-group-object-id>"]
+
+k8s_namespace                          = "default"
+workload_identity_service_account_name = "workload-identity-sa"
+
+enable_github_oidc          = true
+github_repository           = "OlatunbosunIbiyinka/Olatunbosun-portfolio-project"
+github_branch               = "main"
+github_oidc_app_name        = "github-actions-oidc-prod"
+github_oidc_credential_name = "github-actions-federated-credential-prod"
+github_oidc_additional_subjects = [
+  "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:environment:production",
+]
+github_oidc_role_assignments    = ["Reader"]
+enable_github_oidc_tfstate_access = true
+tfstate_resource_group_name       = "tfstate-rg"
+tfstate_storage_account_name      = "olaportfolio001"
+
+tags = {
+  Environment = "production"
+  Project     = "portfolio"
+  ManagedBy   = "Terraform"
+  Owner       = "DevOps"
+  DR          = "acr-geo-northeurope"
+}

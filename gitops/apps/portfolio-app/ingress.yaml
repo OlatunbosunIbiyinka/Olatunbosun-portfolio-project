@@ -1,5 +1,7 @@
 # Public ingress for olatunbosun.dev
-# Requires: ingress-nginx + cert-manager + ClusterIssuer (see docs/DOMAIN_SETUP.md)
+# Private platform by default: app Service stays ClusterIP; only this Ingress LB is public inbound.
+# Outbound (ACME, etc.) uses NAT Gateway + UDR on the AKS subnet — see docs/DOMAIN_SETUP.md
+# Requires: ingress-nginx + cert-manager + ClusterIssuer (ops VM install)
 
 apiVersion: networking.k8s.io/v1
 kind: Ingress

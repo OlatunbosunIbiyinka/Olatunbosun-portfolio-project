@@ -8,6 +8,43 @@ Guide to expose the portfolio on **https://olatunbosun.dev** using Porkbun DNS, 
 
 ---
 
+## Network context (private platform by default)
+
+This project is **private by default**. Domain setup adds one **controlled public inbound path**; everything else stays on the private platform pattern.
+
+| Path | How it works |
+|------|----------------|
+| **Cluster & workloads** | Private AKS API; app `ClusterIP`; ACR / Key Vault via **private endpoints** |
+| **Outbound (internet)** | AKS subnet uses **`userDefinedRouting` + UDR** → **NAT Gateway** (predictable egress IP) |
+| **Inbound (portfolio only)** | **NGINX Ingress** `LoadBalancer` gets a **public IP** — the only intended entry from the internet |
+| **Operations** | Bastion → **ops VM** in the VNet (`kubectl`, Helm, Terraform phase 2) — not from a laptop to the private API |
+
+```
+                    INBOUND (public, deliberate)
+Internet ──DNS──► Ingress LB (public IP) ──► portfolio-app pods
+
+                    OUTBOUND (private platform default)
+pods / nodes ──UDR──► NAT Gateway ──► Internet
+                         │
+                         ├── Let's Encrypt ACME API (cert-manager)
+                         ├── Container registries / GitHub (where not private-endpoint)
+                         └── Other external dependencies
+
+                    NO public path
+Private AKS API · ClusterIP services · ACR/KV private endpoints
+```
+
+**Implications for this guide**
+
+- Run **all** `kubectl` / `helm` steps from the **ops VM** (or another VNet-connected host), not your home machine.
+- **cert-manager** talks to Let's Encrypt **outbound via NAT**; the **HTTP-01 challenge** is answered **inbound** on the Ingress public IP (port 80).
+- Do **not** switch the app Service to `LoadBalancer` — keep `ClusterIP`; only Ingress exposes the site.
+- If certificates hang on `Pending`, check **both** Porkbun DNS **and** NAT/UDR egress (cert-manager must reach ACME).
+
+See also: `docs/ARCHITECTURE_AND_INTERVIEW_PRESENTATION.md`, Terraform `outbound_type = userDefinedRouting` when NAT is enabled.
+
+---
+
 ## Before you start
 
 | Requirement | Notes |
@@ -24,14 +61,16 @@ Guide to expose the portfolio on **https://olatunbosun.dev** using Porkbun DNS, 
 ## Overview
 
 ```
-Internet → Porkbun DNS (A record) → Azure LB (ingress-nginx)
-         → Ingress (olatunbosun.dev) → Service ola-portfolio-app:80 → pods :8080
-         → TLS via cert-manager + Let's Encrypt
+Internet → Porkbun DNS (A record) → Azure LB (ingress-nginx public IP)   ← controlled inbound
+         → Ingress (olatunbosun.dev) → Service (ClusterIP) → pods :8080
+         → TLS via cert-manager + Let's Encrypt (ACME outbound via NAT Gateway)
 ```
 
 ---
 
 ## Phase 1 — Install NGINX Ingress Controller (ops VM)
+
+From the **ops VM** (Bastion session). The controller creates an Azure **public** LoadBalancer — the portfolio’s only internet-facing entry point. AKS nodes remain private; outbound from the cluster still uses **NAT Gateway + UDR**.
 
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -40,6 +79,7 @@ helm repo update
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
+  --set controller.service.type=LoadBalancer \
   --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz
 ```
 
@@ -54,6 +94,8 @@ Record **EXTERNAL-IP** (e.g. `20.x.x.x`) — you need this for Porkbun.
 ---
 
 ## Phase 2 — Install cert-manager (ops VM)
+
+cert-manager pods reach `acme-v02.api.letsencrypt.org` **outbound through the NAT Gateway** (UDR on the AKS subnet). No inbound rule is required for that.
 
 ```bash
 helm repo add jetstack https://charts.jetstack.io
@@ -153,7 +195,14 @@ Update public links:
 
 ### Certificate stuck on `Pending`
 
-- DNS must resolve to the Ingress LB IP before HTTP-01 challenge succeeds
+- DNS must resolve to the Ingress **public** LB IP before HTTP-01 challenge succeeds (inbound on port 80)
+- cert-manager must reach Let's Encrypt **outbound via NAT Gateway** — verify NAT + UDR on `aks-subnet`:
+
+```bash
+# From ops VM — NAT egress smoke test (optional)
+kubectl run curl-test --rm -it --restart=Never --image=curlimages/curl -- curl -sI https://acme-v02.api.letsencrypt.org/directory
+```
+
 - Check cert-manager logs:
 
 ```bash
@@ -169,9 +218,14 @@ kubectl describe certificate olatunbosun-dev-tls -n portfolio-app
 
 ### Connection timeout
 
-- Confirm LB has public IP: `kubectl get svc -n ingress-nginx`
-- Confirm Porkbun A record matches that IP
-- NSG / Azure firewall must allow 80 and 443 to the LB (default for public LB)
+- Confirm Ingress LB has **public** IP: `kubectl get svc -n ingress-nginx`
+- Confirm Porkbun A record matches that IP (not the NAT Gateway egress IP — they are different)
+- NSG must allow **inbound** 80/443 to the Ingress LoadBalancer
+- Outbound NAT does not replace Ingress; both are required
+
+### Helm / image pull failures on ops VM
+
+- Ops VM and cluster pull charts/images **outbound via NAT**; if NAT or UDR is misconfigured, Helm installs fail before Ingress exists
 
 ### `.dev` requires HTTPS
 
@@ -195,13 +249,14 @@ Browsers enforce HSTS on `.dev` TLD. HTTP-only will not work — TLS must be val
 ```
 [ ] Commit and push GitOps + app changes to main
 [ ] CI builds and deploys latest image via Argo CD
-[ ] Ops VM up — kubectl works
-[ ] Install ingress-nginx → note EXTERNAL-IP
-[ ] Install cert-manager
+[ ] Ops VM up (Bastion) — kubectl works against private AKS
+[ ] Confirm NAT Gateway + UDR on aks-subnet (Terraform default when enable_nat_gateway=true)
+[ ] Install ingress-nginx on ops VM → note Ingress EXTERNAL-IP (public — not NAT IP)
+[ ] Install cert-manager on ops VM
 [ ] kubectl apply -f gitops/platform/cluster-issuer.yaml
-[ ] Argo syncs ingress + network policy (or kubectl apply)
-[ ] Porkbun A records → EXTERNAL-IP
-[ ] Wait for certificate Ready
+[ ] Argo syncs ingress + network policy (app Service stays ClusterIP)
+[ ] Porkbun A records → Ingress EXTERNAL-IP
+[ ] Wait for certificate Ready (inbound HTTP-01 + outbound ACME via NAT)
 [ ] Test https://olatunbosun.dev
 [ ] Update CV / LinkedIn / GitHub
 ```

@@ -90,7 +90,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   # API server authorized IP ranges (only if not private cluster)
   dynamic "api_server_access_profile" {
-    for_each = length(var.api_server_authorized_ip_ranges) > 0 ? [1] : []
+    for_each = length(var.api_server_authorized_ip_ranges) > 0 ? { default = true } : {}
     content {
       authorized_ip_ranges = var.api_server_authorized_ip_ranges
     }
@@ -98,7 +98,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   # Logging and monitoring — defer oms_agent on bootstrap; enable via enable_aks_monitoring_addon after cluster is healthy
   dynamic "oms_agent" {
-    for_each = var.enable_log_analytics && var.enable_aks_monitoring_addon && var.log_analytics_workspace_id != null ? [1] : []
+    for_each = var.enable_log_analytics && var.enable_aks_monitoring_addon && var.log_analytics_workspace_id != null ? { default = true } : {}
     content {
       log_analytics_workspace_id = var.log_analytics_workspace_id
     }
@@ -113,7 +113,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   # Enable ingress application gateway (optional)
   dynamic "ingress_application_gateway" {
-    for_each = var.ingress_application_gateway_id != null ? [1] : []
+    for_each = var.ingress_application_gateway_id != null ? { default = true } : {}
     content {
       gateway_id = var.ingress_application_gateway_id
     }
@@ -121,7 +121,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   # Maintenance window
   dynamic "maintenance_window" {
-    for_each = var.maintenance_window_day != null ? [1] : []
+    for_each = var.maintenance_window_day != null ? { default = true } : {}
     content {
       allowed {
         day   = var.maintenance_window_day
@@ -136,7 +136,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   # Key Vault Secrets Provider (CSI) — must be explicit or Terraform omits the block and Azure API treats the add-on as disabled,
   # which fails with: "AzureKeyvaultSecretsProvider addon cannot be disabled due to more than 0 Secret Provider Classes"
   dynamic "key_vault_secrets_provider" {
-    for_each = var.enable_key_vault_secrets_provider ? [1] : []
+    for_each = var.enable_key_vault_secrets_provider ? { default = true } : {}
     content {
       secret_rotation_enabled = var.key_vault_secret_rotation_enabled
     }

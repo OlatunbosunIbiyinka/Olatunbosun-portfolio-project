@@ -44,7 +44,7 @@ resource "azurerm_private_endpoint" "kv" {
 
   # Private DNS Zone Group (configured inline)
   dynamic "private_dns_zone_group" {
-    for_each = var.private_dns_zone_id != null ? [1] : []
+    for_each = var.private_dns_zone_id != null ? { default = true } : {}
     content {
       name                 = "${var.key_vault_name}-dns-zone-group"
       private_dns_zone_ids = [var.private_dns_zone_id]

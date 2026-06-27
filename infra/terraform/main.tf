@@ -244,7 +244,7 @@ provider "kubernetes" {
   insecure               = local.argocd_insecure
 
   dynamic "exec" {
-    for_each = local.k8s_use_live_cluster ? [1] : []
+    for_each = local.k8s_use_live_cluster ? { default = true } : {}
     content {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "kubelogin"
@@ -267,7 +267,7 @@ provider "helm" {
     insecure               = local.argocd_insecure
 
     dynamic "exec" {
-      for_each = local.k8s_use_live_cluster ? [1] : []
+      for_each = local.k8s_use_live_cluster ? { default = true } : {}
       content {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "kubelogin"

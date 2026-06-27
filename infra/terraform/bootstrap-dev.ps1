@@ -1,8 +1,8 @@
 # Clean dev bootstrap — Phase 1 from your laptop (private AKS safe settings).
 # Usage: .\bootstrap-dev.ps1 [-SkipApply] [-DryRun]
 #
-# Phase 1 creates: RG, VNet, NAT, ACR, KV, AKS, Bastion, ops VM, GitHub OIDC.
-# Skips: Argo CD, Container Insights addon, VM tool extensions (install on VM in Phase 2).
+# Phase 1 creates: RG, VNet, ACR, KV, bootstrap-minimal AKS, Bastion, ops VM, GitHub OIDC.
+# Bootstrap defers: NAT/UDR, Cilium, Azure Policy, workload pool, monitoring addon, Argo CD.
 #
 # After Phase 1 (~2–3h): Bastion → ops VM → .\scripts\phase2-on-vm.sh
 

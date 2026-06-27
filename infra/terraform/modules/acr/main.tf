@@ -22,7 +22,7 @@ resource "azurerm_container_registry" "acr" {
 
   # Network rules (if public access enabled and IP restrictions specified)
   dynamic "network_rule_set" {
-    for_each = var.public_network_access_enabled && length(var.allowed_ip_ranges) > 0 ? [1] : []
+    for_each = var.public_network_access_enabled && length(var.allowed_ip_ranges) > 0 ? { default = true } : {}
     content {
       default_action = "Deny"
       dynamic "ip_rule" {
@@ -64,7 +64,7 @@ resource "azurerm_private_endpoint" "acr" {
 
   # Private DNS Zone Group (configured inline)
   dynamic "private_dns_zone_group" {
-    for_each = var.private_dns_zone_id != null ? [1] : []
+    for_each = var.private_dns_zone_id != null ? { default = true } : {}
     content {
       name                 = "${var.acr_name}-dns-zone-group"
       private_dns_zone_ids = [var.private_dns_zone_id]

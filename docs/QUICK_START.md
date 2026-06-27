@@ -24,9 +24,11 @@ This script:
    - `enable_aks_monitoring_addon = false` (avoids Container Insights timeout)
    - VM tool extensions off (install tools on VM in Phase 2)
 
-**Creates:** `ola-rg-dev`, VNet, NAT, private ACR/KV, private AKS, Bastion, ops VM, GitHub OIDC.
+**Creates:** `ola-rg-dev`, VNet, private ACR/KV, **bootstrap-minimal AKS** (no NAT/UDR/Cilium), Bastion, ops VM, GitHub OIDC.
 
-**Does not create:** Argo CD, Container Insights addon, GitHub runner.
+**Bootstrap defers until stable:** NAT + UDR, Cilium, Azure Policy, workload pool, Container Insights, Argo CD.
+
+**Does not create:** Argo CD, Container Insights addon, GitHub runner, NAT Gateway (until stable phase 3).
 
 ### If Phase 1 fails
 
@@ -36,21 +38,31 @@ This script:
 | Terraform state drift | `.\start-fresh.ps1` then re-run bootstrap |
 | AKS timeout | Wait — create timeout is 720m. If TF fails while Azure still `Creating`, run `.\recover-phase1-after-aks-timeout.ps1` |
 
-## Phase 2 — Ops VM (~30–45 min)
+## Phase 2 — Ops VM (AKS bootstrap ~1–4h)
 
 1. Azure Portal → **Bastion** → connect to `aks-operations-vm` (Azure AD login)
-2. Clone repo and run:
+2. Use **tmux** so disconnect does not kill the apply:
 
 ```bash
 git clone https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project.git
 cd Olatunbosun-portfolio-project
-chmod +x scripts/phase2-on-vm.sh
-./scripts/phase2-on-vm.sh
+tmux new -s tf
+cp infra/terraform/envs/dev/terraform.tfvars.example infra/terraform/envs/dev/terraform.tfvars
+bash scripts/bootstrap-stage2-from-vm.sh
+# Ctrl+B then D to detach
 ```
 
-This enables monitoring + Argo CD, configures kubectl, and registers the GitOps app.
+## Phase 2b — Re-enable enterprise features (after AKS Succeeded)
 
-## Phase 3 — CI + live site (~15 min after runner)
+Edit `infra/terraform/envs/dev/terraform.tfvars` — uncomment **one phase at a time** (see bottom of `terraform.tfvars.example`), then:
+
+```bash
+bash scripts/enable-stable-platform.sh apply
+```
+
+Order: workload pool → Azure Policy → NAT/UDR → Cilium → monitoring → Argo CD.
+
+## Phase 3 — GitOps + CI (~30–45 min)
 
 1. **GitHub secrets** (from ops VM):
 

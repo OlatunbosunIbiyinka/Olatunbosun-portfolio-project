@@ -178,14 +178,7 @@ resource "azurerm_linux_virtual_machine" "jumpbox" {
     version   = var.vm_os_image_version
   }
 
-  # Only when a real SSH public key is set; with key = null Azure AD + generated password is used.
-  dynamic "admin_ssh_key" {
-    for_each = local.jumpbox_ssh_public_key_effective != null ? [1] : []
-    content {
-      username   = var.jumpbox_admin_username
-      public_key = local.jumpbox_ssh_public_key_effective
-    }
-  }
+  # Azure AD login (default): password bootstrap only — no admin_ssh_key block.
 
   # Password authentication (only used if SSH key is not provided)
   # Note: This password won't be used once Azure AD extension is installed

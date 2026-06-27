@@ -1,150 +1,143 @@
 # Development environment — copy to terraform.tfvars. Multi-env: see envs/README.md
+#
+# =============================================================================
+# BOOTSTRAP MODE (default)
+# Defer NAT/UDR, Cilium, Azure Policy, monitoring addon, Argo CD, and workload
+# pools until the cluster reaches Succeeded. Re-enable in order — see bottom of
+# this file and docs/BOOTSTRAP_FIXES.md → "Stable platform re-enable".
+# =============================================================================
 
 # Resource Group Configuration
 resource_group_name = "ola-rg-dev"
 location            = "uksouth"
 
-# AKS Configuration
-aks_name                     = "ola-aks-dev"
-kubernetes_version          = null  # Use latest if null
+# --- AKS (bootstrap-minimal) ---
+aks_name            = "ola-aks-dev"
+kubernetes_version  = "1.31.9" # Do NOT use null/1.35 on first create
 
-# Network Configuration (Enterprise-Grade: Azure CNI Overlay + Cilium)
-# Azure CNI Overlay provides better IP management and scalability
-# Cilium provides advanced network policies and observability
-# Note: These are set as defaults in the AKS module, but can be overridden here if needed
-# network_plugin_mode = "overlay"  # Azure CNI Overlay (default)
-# network_policy      = "cilium"   # Cilium network policy engine (default)
-# network_dataplane   = "cilium"   # REQUIRED: Must be "cilium" when network_policy = "cilium"
-# pod_cidr            = "10.244.0.0/16"  # Pod CIDR for overlay mode (default)
-
-# System Node Pool (Dedicated for system workloads: CoreDNS, metrics-server, etc.)
-# Production-grade: Separate system pool with taints to prevent user workloads
-default_node_pool_name       = "system"
-default_node_pool_vm_size   = "Standard_D2s_v3"  # Smaller size for system pods
-default_node_pool_node_count = 1
+default_node_pool_name            = "system"
+default_node_pool_vm_size         = "Standard_D2s_v3"
+default_node_pool_node_count      = 1
 default_node_pool_os_disk_size_gb = 128
-enable_auto_scaling         = true
-min_node_count              = 1
-max_node_count              = 3
-# System pool taints prevent user workloads from scheduling on system nodes
-system_pool_taints          = ["CriticalAddonsOnly=true:NoSchedule"]
+enable_auto_scaling               = true
+min_node_count                    = 1
+max_node_count                    = 3
+system_pool_taints                = [] # Re-add CriticalAddonsOnly after workload pool exists
 
-# Workload Node Pools (Dedicated for application workloads)
-# Production-grade: Separate workload pools from system pool
-workload_node_pools = {
-  "workload" = {
-    vm_size             = "Standard_D4s_v3"  # Larger size for application workloads
-    node_count          = 1
-    os_disk_size_gb     = 128
-    os_sku              = "Ubuntu"
-    enable_auto_scaling = true
-    min_count           = 1
-    max_count           = 5
-    max_pods            = 30
-    node_labels = {
-      "pool.type" = "user"  # Custom label (kubernetes.azure.com/* is reserved by AKS)
-      "workload"                  = "application"
-      "node.kubernetes.io/role"   = "workload"
-    }
-    node_taints = []  # No taints - accepts all workloads
-    mode       = "User"  # User mode for application workloads
-  }
-}
+workload_node_pools = {} # Add workload pool in stable phase 1
+
+# --- Networking (bootstrap: loadBalancer egress, azure policy — NO NAT/UDR/Cilium) ---
+enable_nat_gateway  = false # true → userDefinedRouting via NAT (defer until stable phase 3)
+network_policy      = "azure"
+network_dataplane   = "azure"
+network_plugin_mode = "overlay"
+
+enable_private_dns = true
+enable_nsg         = true
 
 # ACR Configuration
-acr_name            = "olaacr01dev" # Must be globally unique, lowercase alphanumeric only
-acr_georeplications = []            # Dev: no geo-replication (prod uses northeurope — see envs/prod/)
+acr_name            = "olaacr01dev"
+acr_georeplications = []
 
-# Key Vault Configuration (Enterprise-Grade)
-key_vault_name              = "ola-kv-dev"  # Must be globally unique
-key_vault_sku              = "standard"
-# Purge protection: false for dev (allows easy terraform destroy), true for production
-key_vault_purge_protection = false
-key_vault_public_access     = false  # Enterprise-grade: Disabled
-key_vault_network_default_action = "Deny"  # Enterprise-grade: Deny by default
-key_vault_network_bypass    = "None"  # Enterprise-grade: No bypass
-key_vault_allowed_ips       = []  # Not needed with private endpoints
+# Key Vault Configuration
+key_vault_name                   = "ola-kv-dev"
+key_vault_sku                    = "standard"
+key_vault_purge_protection       = false
+key_vault_public_access          = false
+key_vault_network_default_action = "Deny"
+key_vault_network_bypass         = "None"
+key_vault_allowed_ips            = []
 
-# Private Endpoint Configuration (Enterprise-Grade: Enabled by Default)
-# VNet and private endpoints are automatically created for enterprise-grade security
-enable_acr_private_endpoint = true      # Enterprise-grade: Enabled
-enable_keyvault_private_endpoint = true # Enterprise-grade: Enabled
-acr_public_network_access = false        # Enterprise-grade: Disabled
+enable_acr_private_endpoint      = true
+enable_keyvault_private_endpoint = true
+acr_public_network_access        = false
 
-# VNet Configuration (Auto-created)
-# vnet_name = null  # Auto-generated as "${resource_group_name}-vnet"
-# vnet_address_space = ["10.0.0.0/16"]
-# aks_subnet_address_prefixes = ["10.0.1.0/24"]
-# private_endpoint_subnet_address_prefixes = ["10.0.2.0/24"]
-enable_private_dns = true  # Enterprise-grade: Enabled for DNS resolution
-enable_nsg = true          # Enterprise-grade: Enabled for network security
-
-# NAT Gateway Configuration (Enterprise-Grade: Predictable Egress IPs)
-enable_nat_gateway = true  # Enterprise-grade: Enabled for predictable egress IPs
-# nat_gateway_zones = []  # Empty = zone-redundant (recommended for high availability)
-# nat_gateway_zones = ["1", "2", "3"]  # Specific zones (optional)
-
-# Azure Bastion + Jumpbox Configuration (Enterprise-Grade: Secure Access to Private AKS)
-# Enable Azure Bastion + Jumpbox VM for secure access to private AKS cluster
-# This provides secure RDP/SSH access without exposing VMs to the internet
-# Recommended for production environments with private AKS clusters
-enable_bastion = true
-jumpbox_vm_name = "aks-operations-vm"
-# Phase 1 (laptop): false — private AKS API unreachable. Phase 2 (ops VM): true
-enable_argocd = false
-# Phase 1: skip VM extension tool installs (faster, fewer timeouts). Install on VM via setup-phase2-tools.sh
+# Bastion + ops VM
+enable_bastion                = true
+jumpbox_vm_name               = "aks-operations-vm"
 jumpbox_install_docker        = false
 jumpbox_install_terraform     = false
 jumpbox_install_nodejs        = false
 jumpbox_install_github_runner = false
-# jumpbox_vm_size = "Standard_B2s"  # Sufficient for kubectl operations
-# jumpbox_admin_username = "azureuser"
-# github_repository_url = "https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project"
-# jumpbox_ssh_public_key — omit entirely for Azure AD login; do NOT set to ""
-# jumpbox_ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC..."  # optional legacy SSH key
-# bastion_sku = "Standard"  # Standard recommended (supports copy/paste, IP connect, tunneling)
 
-# Monitoring Configuration
-enable_log_analytics = true
-# Bootstrap: false on first AKS create (avoids Container Insights Helm timeout on private cluster).
-# After cluster is Succeeded, set true and terraform apply again.
+# Deferred until stable (keep false for bootstrap)
+enable_argocd               = false
 enable_aks_monitoring_addon = false
+enable_azure_policy         = false
 
-# Security Configuration
-enable_azure_policy    = true
+enable_log_analytics = true # Workspace only; addon off until stable phase 5
+
 disable_local_accounts = true
 enable_azure_rbac      = true
-# Add Azure AD group object IDs for cluster admin access
-admin_group_object_ids = []  # Example: ["00000000-0000-0000-0000-000000000000"]
-# Add Azure AD group object IDs for cluster operator access (read-only)
-operator_group_object_ids = []  # Example: ["00000000-0000-0000-0000-000000000000"]
+vm_admin_login_principal_ids = ["be2dd317-dac9-4f54-922a-6aab723c19e0"]
+admin_group_object_ids       = []
+operator_group_object_ids    = []
 
-# Workload Identity Configuration
-k8s_namespace                        = "default"
+# Workload Identity
+k8s_namespace                          = "default"
 workload_identity_service_account_name = "workload-identity-sa"
 
-# GitHub Actions OIDC Configuration
+# GitHub Actions OIDC
 enable_github_oidc = true
-github_repository  = "OlatunbosunIbiyinka/Olatunbosun-portfolio-project"  # Format: owner/repo
+github_repository  = "OlatunbosunIbiyinka/Olatunbosun-portfolio-project"
 github_branch      = "main"
-github_oidc_app_name = "github-actions-oidc"
+github_oidc_app_name        = "github-actions-oidc"
 github_oidc_credential_name = "github-actions-federated-credential"
-# Federated credentials for CI branches and PRs (terraform apply after changing)
 github_oidc_additional_subjects = [
   "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:ref:refs/heads/develop",
   "repo:OlatunbosunIbiyinka/Olatunbosun-portfolio-project:pull_request",
 ]
-# Reader on RG + AcrPush on ACR (module.github_oidc enable_acr_push = true)
-github_oidc_role_assignments = ["Reader"]
-# Storage Blob Data Contributor on tfstate account (terraform plan in CI via OIDC)
+github_oidc_role_assignments      = ["Reader"]
 enable_github_oidc_tfstate_access = true
 tfstate_resource_group_name       = "tfstate-rg"
 tfstate_storage_account_name      = "olaportfolio001"
 
-# Tags - Development Environment (NOT production)
 tags = {
   Environment = "development"
   Project     = "portfolio"
   ManagedBy   = "Terraform"
   Owner       = "DevOps"
 }
+
+# =============================================================================
+# STABLE PLATFORM — enable ONE phase at a time, then: terraform apply
+# (from ops VM). Verify kubectl / nodes healthy before the next phase.
+# =============================================================================
+#
+# Phase 1 — Workload pool + system taints
+# system_pool_taints = ["CriticalAddonsOnly=true:NoSchedule"]
+# workload_node_pools = {
+#   "workload" = {
+#     vm_size             = "Standard_D4s_v3"
+#     node_count          = 1
+#     os_disk_size_gb     = 128
+#     os_sku              = "Ubuntu"
+#     enable_auto_scaling = true
+#     min_count           = 1
+#     max_count           = 5
+#     max_pods            = 30
+#     node_labels = {
+#       "pool.type"               = "user"
+#       "workload"                = "application"
+#       "node.kubernetes.io/role" = "workload"
+#     }
+#     node_taints = []
+#     mode        = "User"
+#   }
+# }
+#
+# Phase 2 — Azure Policy
+# enable_azure_policy = true
+#
+# Phase 3 — NAT Gateway + UDR egress (predictable outbound IP)
+# enable_nat_gateway = true
+#
+# Phase 4 — Cilium (may recycle nodes; run during maintenance window)
+# network_policy    = "cilium"
+# network_dataplane = "cilium"
+#
+# Phase 5 — Container Insights addon
+# enable_aks_monitoring_addon = true
+#
+# Phase 6 — GitOps (or run: bash scripts/phase2-on-vm.sh)
+# enable_argocd = true

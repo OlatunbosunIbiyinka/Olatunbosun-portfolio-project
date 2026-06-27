@@ -68,3 +68,82 @@ terraform apply -var-file="envs/dev/terraform.tfvars" \
 cd infra/terraform
 .\recover-phase1-after-aks-timeout.ps1
 ```
+
+---
+
+## 2026-06-27 — AKS Failed: NodesNotReady / Internal server error
+
+| Problem | Fix |
+|---------|-----|
+| Cluster `Failed` after ~9h; system pool `NodesNotReady` | Delete failed cluster, clean TF state, retry with **simplified bootstrap** |
+| K8s `1.35` (latest) + workload pool on first create | Pin `kubernetes_version = "1.31.9"`; `workload_node_pools = {}` until cluster is healthy |
+| Private + Cilium + NAT/UDR fails `NodesNotReady` twice | Bootstrap with `enable_nat_gateway=false`, `network_policy=azure`, `network_dataplane=azure`; add NAT/Cilium after Succeeded |
+| `-target` apply warning | After AKS succeeds, run full `terraform plan` + apply (no `-target`) |
+
+### On ops VM — recovery
+
+```bash
+cd ~/Olatunbosun-portfolio-project/infra/terraform
+
+# 1. Delete failed cluster in Azure
+az aks delete -g ola-rg-dev -n ola-aks-dev --yes --no-wait
+
+# 2. Wait until gone (or check portal)
+az aks show -g ola-rg-dev -n ola-aks-dev 2>/dev/null || echo "AKS deleted"
+
+# 3. Remove AKS from Terraform state (if present)
+terraform state list | grep '^module\.aks\.' | while read r; do terraform state rm "$r"; done
+
+# 4. Sync bootstrap-safe tfvars
+cp envs/dev/terraform.tfvars.example envs/dev/terraform.tfvars
+# Or edit: kubernetes_version=1.31.9, workload_node_pools={}, enable_azure_policy=false
+
+export KUBECONFIG=""
+
+# 5. Retry AKS only (monitoring + Argo off)
+terraform apply -var-file="envs/dev/terraform.tfvars" \
+  -var="enable_argocd=false" \
+  -var="enable_aks_monitoring_addon=false" \
+  -target="module.aks" \
+  -auto-approve
+
+# 6. When cluster is Succeeded — full apply + VM RBAC
+AKS_ID=$(az aks show -g ola-rg-dev -n ola-aks-dev --query id -o tsv)
+terraform apply -var-file="envs/dev/terraform.tfvars" \
+  -var="enable_argocd=false" \
+  -var="enable_aks_monitoring_addon=false" \
+  -var="jumpbox_aks_cluster_id=$AKS_ID" \
+  -auto-approve
+
+# 7. Add workload pool later (uncomment in tfvars) then apply again
+```
+
+If `NodesNotReady` persists, open Azure support ticket with Activity Id from portal — often transient Azure backend issue on private + Cilium clusters.
+
+---
+
+## Bootstrap vs stable platform
+
+**Bootstrap (default in `envs/dev/terraform.tfvars.example`)** — only what is needed for a healthy private cluster:
+
+| Feature | Bootstrap | Stable phase |
+|---------|-----------|--------------|
+| NAT Gateway + UDR egress | off | Phase 3 |
+| Cilium network policy | off (azure) | Phase 4 |
+| Azure Policy addon | off | Phase 2 |
+| Workload node pool | off | Phase 1 |
+| System pool taints | off | Phase 1 |
+| Container Insights addon | off | Phase 5 |
+| Argo CD | off | Phase 6 |
+| K8s version | pinned 1.31.9 | bump when stable |
+
+**On ops VM after bootstrap succeeds:**
+
+```bash
+cp envs/dev/terraform.tfvars.example envs/dev/terraform.tfvars   # if not already
+bash scripts/enable-stable-platform.sh plan                      # see drift
+# Edit tfvars — uncomment ONE phase block — then:
+bash scripts/enable-stable-platform.sh apply
+```
+
+Or GitOps only: `bash scripts/phase2-on-vm.sh` (phases 5–6).

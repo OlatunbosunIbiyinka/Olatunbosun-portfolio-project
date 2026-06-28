@@ -240,7 +240,68 @@ Browsers enforce HSTS on `.dev` TLD. HTTP-only will not work — TLS must be val
 | `gitops/apps/portfolio-app/ingress.yaml` | Host rules + TLS for olatunbosun.dev |
 | `gitops/apps/portfolio-app/networkpolicy-ingress.yaml` | Allow ingress-nginx → app pods |
 | `gitops/platform/cluster-issuer.yaml` | Let's Encrypt production issuer |
+| `gitops/platform/argocd-ingress.yaml` | Argo CD UI at argocd.olatunbosun.dev |
+| `scripts/enable-argocd-ui.sh` | Patch server.insecure + apply ingress (ops VM) |
 | `app/public/index.html` | `og:url` → https://olatunbosun.dev |
+
+---
+
+## Argo CD UI — https://argocd.olatunbosun.dev
+
+Use this when **Azure CLI SSH extensions fail on Windows** and you want the Argo CD web UI without a Bastion tunnel.
+
+**Security model:** TLS at ingress + **nginx IP allowlist** (your public IP only). Others get HTTP 403. Still use a strong admin password; for production add SSO or keep the UI private.
+
+### 1. Find your public IP (laptop, not VM)
+
+```bash
+curl -s ifconfig.me
+```
+
+Home ISP IPs can change — re-run the script with the new IP if access breaks.
+
+### 2. Enable UI on the ops VM
+
+```bash
+bash scripts/enable-argocd-ui.sh 203.0.113.50
+# multiple locations:
+bash scripts/enable-argocd-ui.sh 203.0.113.50 198.51.100.10
+```
+
+The script: enables `server.insecure`, applies ingress, **waits for Let's Encrypt**, then adds the IP whitelist (HTTP-01 must succeed before lockdown).
+
+**Porkbun DNS** — same Ingress public IP as the portfolio:
+
+| Type | Host | Answer | TTL |
+|------|------|--------|-----|
+| **A** | `argocd` | `<EXTERNAL-IP>` | 300 |
+
+Open **https://argocd.olatunbosun.dev** — login **admin** + password from script output.
+
+### Update allowed IP later
+
+```bash
+bash scripts/enable-argocd-ui.sh <new-public-ip>
+```
+
+Or patch manually:
+
+```bash
+kubectl annotate ingress argocd-server-ingress -n argocd \
+  nginx.ingress.kubernetes.io/whitelist-source-range="203.0.113.50/32" --overwrite
+```
+
+### Azure CLI SSH extension error (Windows)
+
+Exit code `3221225477` is a **pip crash** inside the Azure CLI install (broken bundled Python). Reinstall fixes it:
+
+```powershell
+winget uninstall Microsoft.AzureCLI
+winget install -e --id Microsoft.AzureCLI
+az extension add --name ssh
+```
+
+**Without fixing CLI:** use the ingress URL above, or Azure Portal → VM → **Connect** → Bastion → **Native client** (OpenSSH `-L` tunnel; no `az ssh` extension).
 
 ---
 

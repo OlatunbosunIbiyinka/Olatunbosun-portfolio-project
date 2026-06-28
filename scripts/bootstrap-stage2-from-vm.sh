@@ -10,7 +10,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TF_DIR="${REPO_ROOT}/infra/terraform"
 RG="${RG:-ola-rg-dev}"
 AKS="${AKS:-ola-aks-dev}"
-VAR_FILE="envs/dev/terraform.tfvars"
+VAR_FILE="${TF_DIR}/envs/dev/terraform.tfvars"
 EXAMPLE="${TF_DIR}/envs/dev/terraform.tfvars.example"
 
 log() { printf '[stage2] %s\n' "$*"; }
@@ -20,7 +20,7 @@ if [[ ! -f "$VAR_FILE" ]]; then
   cp "$EXAMPLE" "$VAR_FILE"
 fi
 
-log "Bootstrap settings (must show nat=false, policy=azure, k8s=1.31.9):"
+log "Bootstrap settings (must show nat=false, policy=azure, k8s=1.34.8):"
 grep -E 'kubernetes_version|enable_nat_gateway|network_policy|network_dataplane|workload_node_pools|enable_azure_policy|enable_aks_monitoring_addon|enable_argocd' "$VAR_FILE" || true
 
 log "Installing tools..."

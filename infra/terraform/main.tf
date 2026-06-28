@@ -176,15 +176,15 @@ module "aks" {
   # Outbound configuration:
   # - When NAT Gateway is enabled (enterprise-grade): use userDefinedRouting for predictable egress IPs
   # - When NAT Gateway is disabled (dev simplification): fall back to loadBalancer for simpler, more resilient outbound during bootstrap
-  outbound_type              = var.enable_nat_gateway ? "userDefinedRouting" : "loadBalancer"
-  kubernetes_version         = var.kubernetes_version
-  enable_log_analytics       = var.enable_log_analytics
+  outbound_type               = var.enable_nat_gateway ? "userDefinedRouting" : "loadBalancer"
+  kubernetes_version          = var.kubernetes_version
+  enable_log_analytics        = var.enable_log_analytics
   enable_aks_monitoring_addon = var.enable_aks_monitoring_addon
-  log_analytics_workspace_id = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
-  oidc_issuer_enabled        = true
-  workload_identity_enabled  = true
-  azure_policy_enabled       = var.enable_azure_policy
-  local_account_disabled     = var.disable_local_accounts
+  log_analytics_workspace_id  = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
+  oidc_issuer_enabled         = true
+  workload_identity_enabled   = true
+  azure_policy_enabled        = var.enable_azure_policy
+  local_account_disabled      = var.disable_local_accounts
   # Production-Grade: Use group names (looked up via data sources) or fallback to Object IDs
   admin_group_object_ids = concat(
     # Lookup groups by name (preferred - production-grade)
@@ -431,11 +431,11 @@ module "bastion_jumpbox" {
   enable_tunneling      = var.enable_bastion_tunneling
 
   # Trusted Execution Zone Configuration — AKS bindings deferred until stage 2 (jumpbox_aks_cluster_id set from ops VM)
-  aks_cluster_id               = var.jumpbox_aks_cluster_id
-  enable_aks_role_assignment   = var.jumpbox_aks_cluster_id != null && var.jumpbox_aks_cluster_id != ""
-  acr_id                       = module.acr.acr_id
-  key_vault_id                 = module.keyvault.key_vault_id
-  resource_group_id            = azurerm_resource_group.rg.id
+  aks_cluster_id             = var.jumpbox_aks_cluster_id
+  enable_aks_role_assignment = var.jumpbox_aks_cluster_id != null && var.jumpbox_aks_cluster_id != ""
+  acr_id                     = module.acr.acr_id
+  key_vault_id               = module.keyvault.key_vault_id
+  resource_group_id          = azurerm_resource_group.rg.id
 
   # Optional: Monitoring
   log_analytics_workspace_id = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null

@@ -10,7 +10,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TF_DIR="${REPO_ROOT}/infra/terraform"
 RG="${RG:-ola-rg-dev}"
 AKS="${AKS:-ola-aks-dev}"
-VAR_FILE="envs/dev/terraform.tfvars"
+VAR_FILE="${TF_DIR}/envs/dev/terraform.tfvars"
 PHASE="${1:-plan}"
 
 log() { printf '[stable] %s\n' "$*"; }

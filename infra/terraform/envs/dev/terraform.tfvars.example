@@ -13,7 +13,7 @@ location            = "uksouth"
 
 # --- AKS (bootstrap-minimal) ---
 aks_name            = "ola-aks-dev"
-kubernetes_version  = "1.31.9" # Do NOT use null/1.35 on first create
+kubernetes_version  = "1.34.8" # Standard-tier supported patch — not LTS-only (1.31.x) or latest (1.35+)
 
 default_node_pool_name            = "system"
 default_node_pool_vm_size         = "Standard_D2s_v3"

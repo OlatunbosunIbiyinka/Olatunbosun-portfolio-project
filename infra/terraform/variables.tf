@@ -478,7 +478,7 @@ variable "jumpbox_ssh_public_key" {
   sensitive   = true
 
   validation {
-    condition     = var.jumpbox_ssh_public_key == null || trimspace(var.jumpbox_ssh_public_key) != ""
+    condition     = var.jumpbox_ssh_public_key == null ? true : trimspace(var.jumpbox_ssh_public_key) != ""
     error_message = "jumpbox_ssh_public_key must be omitted/null or a non-empty SSH public key — do not set jumpbox_ssh_public_key = \"\" in terraform.tfvars."
   }
 }

@@ -76,7 +76,8 @@ cd infra/terraform
 | Problem | Fix |
 |---------|-----|
 | Cluster `Failed` after ~9h; system pool `NodesNotReady` | Delete failed cluster, clean TF state, retry with **simplified bootstrap** |
-| K8s `1.35` (latest) + workload pool on first create | Pin `kubernetes_version = "1.31.9"`; `workload_node_pools = {}` until cluster is healthy |
+| K8s `1.35` (latest) + workload pool on first create | Pin `kubernetes_version = "1.34.8"` (Standard tier); `workload_node_pools = {}` until cluster is healthy |
+| `1.31.9` rejected (`K8sVersionNotSupported` / LTS only) | Use `1.34.8` or `1.33.12` — not 1.31.x unless Premium + LTS plan |
 | Private + Cilium + NAT/UDR fails `NodesNotReady` twice | Bootstrap with `enable_nat_gateway=false`, `network_policy=azure`, `network_dataplane=azure`; add NAT/Cilium after Succeeded |
 | `-target` apply warning | After AKS succeeds, run full `terraform plan` + apply (no `-target`) |
 
@@ -135,7 +136,7 @@ If `NodesNotReady` persists, open Azure support ticket with Activity Id from por
 | System pool taints | off | Phase 1 |
 | Container Insights addon | off | Phase 5 |
 | Argo CD | off | Phase 6 |
-| K8s version | pinned 1.31.9 | bump when stable |
+| K8s version | pinned 1.34.8 | bump when stable |
 
 **On ops VM after bootstrap succeeds:**
 

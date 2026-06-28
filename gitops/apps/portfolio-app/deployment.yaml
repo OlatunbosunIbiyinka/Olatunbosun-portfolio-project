@@ -27,7 +27,7 @@ spec:
       containers:
         - name: ola-portfolio-app
           # CI updates this to an immutable SHA tag on each successful build (ci-build-push.yml)
-          image: olaacr01dev.azurecr.io/ola-portfolio-app:52e19074fbf586b5370cfd1df5af09a1d52782d5
+          image: olaacr01dev.azurecr.io/ola-portfolio-app:207225b94ce7af8bcead83c7f648c799ee604f63
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

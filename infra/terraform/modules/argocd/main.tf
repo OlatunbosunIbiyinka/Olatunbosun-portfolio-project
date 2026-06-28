@@ -4,7 +4,8 @@
 
 locals {
   # Bootstrap/dev: single-node clusters cannot schedule HA Argo CD (2x controller/server/repo + redis-ha x3).
-  argocd_values = var.high_availability ? {
+  # yamlencode per branch avoids Terraform object-type mismatch between HA and dev value maps.
+  argocd_values_yaml = var.high_availability ? yamlencode({
     configs = {
       params = {
         "server.insecure" = false
@@ -39,7 +40,7 @@ locals {
       enabled  = true
       replicas = 3
     }
-    } : {
+    }) : yamlencode({
     configs = {
       params = {
         "server.insecure" = false
@@ -76,7 +77,7 @@ locals {
     redis-ha = {
       enabled = false
     }
-  }
+  })
 }
 
 # Create ArgoCD namespace
@@ -106,7 +107,7 @@ resource "helm_release" "argocd" {
   wait    = true
   timeout = var.high_availability ? 600 : 900
 
-  values = [yamlencode(local.argocd_values)]
+  values = [local.argocd_values_yaml]
 
   depends_on = [kubernetes_namespace_v1.argocd]
 }

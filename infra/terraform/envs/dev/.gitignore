@@ -10,3 +10,5 @@
 
 # Ignore local variable files (may contain secrets)
 *.tfvars
+# Committed phase overlays (no secrets)
+!stable/*.tfvars

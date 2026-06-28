@@ -54,13 +54,21 @@ bash scripts/bootstrap-stage2-from-vm.sh
 
 ## Phase 2b — Re-enable enterprise features (after AKS Succeeded)
 
-Edit `infra/terraform/envs/dev/terraform.tfvars` — uncomment **one phase at a time** (see bottom of `terraform.tfvars.example`), then:
+From the **ops VM** (one phase at a time):
 
 ```bash
-bash scripts/enable-stable-platform.sh apply
+git pull
+bash scripts/stable-phase-apply.sh plan 1    # preview
+tmux new -s stable
+bash scripts/stable-phase-apply.sh apply 1     # workload pool (~15–30 min)
+# verify nodes, then apply 2, 3, 4, 5 in order
 ```
 
-Order: workload pool → Azure Policy → NAT/UDR → Cilium → monitoring → Argo CD.
+Order: **1** workload pool → **2** Azure Policy → **3** NAT/UDR → **4** Cilium → **5** monitoring addon.
+
+Phase files: `infra/terraform/envs/dev/stable/phase*.tfvars`
+
+Legacy: edit `terraform.tfvars` manually + `bash scripts/enable-stable-platform.sh apply`
 
 ## Phase 3 — GitOps + CI (~30–45 min)
 

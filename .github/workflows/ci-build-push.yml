@@ -136,6 +136,8 @@ jobs:
             echo "GitOps manifest already at ${{ github.sha }}"
           else
             git commit -m "chore(gitops): deploy ola-portfolio-app@${{ github.sha }}"
+            git fetch origin "${{ github.ref_name }}"
+            git rebase "origin/${{ github.ref_name }}"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
 

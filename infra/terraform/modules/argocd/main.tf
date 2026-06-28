@@ -2,6 +2,83 @@
 # Enterprise-grade: Deploys ArgoCD in-cluster for GitOps workflows
 # CI only pushes images, ArgoCD pulls manifests from Git
 
+locals {
+  # Bootstrap/dev: single-node clusters cannot schedule HA Argo CD (2x controller/server/repo + redis-ha x3).
+  argocd_values = var.high_availability ? {
+    configs = {
+      params = {
+        "server.insecure" = false
+      }
+    }
+    controller = {
+      replicas = 2
+      resources = {
+        limits   = { cpu = "1000m", memory = "1Gi" }
+        requests = { cpu = "500m", memory = "512Mi" }
+      }
+    }
+    repoServer = {
+      replicas = 2
+      resources = {
+        limits   = { cpu = "1000m", memory = "1Gi" }
+        requests = { cpu = "500m", memory = "512Mi" }
+      }
+    }
+    server = {
+      replicas = 2
+      resources = {
+        limits   = { cpu = "1000m", memory = "1Gi" }
+        requests = { cpu = "500m", memory = "512Mi" }
+      }
+    }
+    applicationSet = {
+      enabled  = true
+      replicas = 2
+    }
+    redis-ha = {
+      enabled  = true
+      replicas = 3
+    }
+    } : {
+    configs = {
+      params = {
+        "server.insecure" = false
+      }
+    }
+    controller = {
+      replicas = 1
+      resources = {
+        limits   = { cpu = "500m", memory = "512Mi" }
+        requests = { cpu = "100m", memory = "256Mi" }
+      }
+    }
+    repoServer = {
+      replicas = 1
+      resources = {
+        limits   = { cpu = "500m", memory = "512Mi" }
+        requests = { cpu = "100m", memory = "256Mi" }
+      }
+    }
+    server = {
+      replicas = 1
+      resources = {
+        limits   = { cpu = "500m", memory = "512Mi" }
+        requests = { cpu = "100m", memory = "256Mi" }
+      }
+    }
+    applicationSet = {
+      enabled  = false
+      replicas = 1
+    }
+    redis = {
+      enabled = true
+    }
+    redis-ha = {
+      enabled = false
+    }
+  }
+}
+
 # Create ArgoCD namespace
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
@@ -26,77 +103,10 @@ resource "helm_release" "argocd" {
 
   force_update = true
 
-  # Wait for resources to be ready
   wait    = true
-  timeout = 600
+  timeout = var.high_availability ? 600 : 900
 
-  # Enterprise-grade: Security and production settings
-  values = [
-    yamlencode({
-      # Security: Disable admin user, use RBAC
-      configs = {
-        params = {
-          "server.insecure" = false
-        }
-      }
-
-      # High availability for production
-      controller = {
-        replicas = 2
-        resources = {
-          limits = {
-            cpu    = "1000m"
-            memory = "1Gi"
-          }
-          requests = {
-            cpu    = "500m"
-            memory = "512Mi"
-          }
-        }
-      }
-
-      repoServer = {
-        replicas = 2
-        resources = {
-          limits = {
-            cpu    = "1000m"
-            memory = "1Gi"
-          }
-          requests = {
-            cpu    = "500m"
-            memory = "512Mi"
-          }
-        }
-      }
-
-      server = {
-        replicas = 2
-        resources = {
-          limits = {
-            cpu    = "1000m"
-            memory = "1Gi"
-          }
-          requests = {
-            cpu    = "500m"
-            memory = "512Mi"
-          }
-        }
-      }
-
-      # Application controller settings
-      applicationSet = {
-        enabled  = true
-        replicas = 2
-      }
-
-      # Redis HA (Dandy redis-ha subchart): replicas must be a single int, not servers/sentinels maps.
-      # See https://github.com/DandyDeveloper/charts/blob/master/charts/redis-ha/values.yaml
-      redis-ha = {
-        enabled  = true
-        replicas = 3
-      }
-    })
-  ]
+  values = [yamlencode(local.argocd_values)]
 
   depends_on = [kubernetes_namespace_v1.argocd]
 }

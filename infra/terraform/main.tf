@@ -293,6 +293,7 @@ module "argocd" {
   resource_group_name = azurerm_resource_group.rg.name
   namespace           = var.argocd_namespace
   argocd_version      = var.argocd_version
+  high_availability   = var.argocd_high_availability
   tags                = var.tags
 
   depends_on = [module.aks]

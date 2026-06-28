@@ -17,3 +17,9 @@ variable "argocd_version" {
   type        = string
   default     = "latest"
 }
+
+variable "argocd_high_availability" {
+  description = "HA Argo CD (multi-replica + redis-ha). false for dev/single-node clusters."
+  type        = bool
+  default     = false
+}

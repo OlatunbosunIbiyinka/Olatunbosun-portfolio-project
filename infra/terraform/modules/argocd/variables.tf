@@ -25,6 +25,12 @@ variable "argocd_version" {
   default     = "latest"
 }
 
+variable "high_availability" {
+  description = "HA Argo CD (multi-replica + redis-ha). false for dev/single-node bootstrap clusters."
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

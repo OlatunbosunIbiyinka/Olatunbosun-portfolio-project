@@ -17,7 +17,7 @@ SKIP_ARGOCD_APP="${SKIP_ARGOCD_APP:-false}"
 log() { printf '[phase2] %s\n' "$*"; }
 
 log "Installing ops tools (idempotent)..."
-"${REPO_ROOT}/scripts/setup-phase2-tools.sh"
+bash "${REPO_ROOT}/scripts/setup-phase2-tools.sh"
 
 log "Azure login (use your account or VM identity)"
 if ! az account show >/dev/null 2>&1; then

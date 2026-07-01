@@ -2,10 +2,12 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: ola-portfolio-app-pdb
-  namespace: default
+  namespace: portfolio-app
+  labels:
+    app: ola-portfolio-app
+    managed-by: argocd
 spec:
   minAvailable: 1
   selector:
     matchLabels:
       app: ola-portfolio-app
-

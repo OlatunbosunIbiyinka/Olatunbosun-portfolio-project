@@ -1,5 +1,5 @@
-# Portfolio Application Deployment
-# Managed by Argo CD. Image repository must match CI (ola-portfolio-app).
+# Portfolio application — GitOps source of truth (Argo CD).
+# CI updates the image tag on each release (ci-build-push.yml).
 
 apiVersion: apps/v1
 kind: Deployment
@@ -11,6 +11,11 @@ metadata:
     managed-by: argocd
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: ola-portfolio-app
@@ -19,11 +24,29 @@ spec:
       labels:
         app: ola-portfolio-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       tolerations:
         - effect: NoSchedule
           key: workload
           operator: Equal
           value: application
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - ola-portfolio-app
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: ola-portfolio-app
           # CI updates this to an immutable SHA tag on each successful build (ci-build-push.yml)
@@ -32,6 +55,7 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+              protocol: TCP
           env:
             - name: NODE_ENV
               value: production
@@ -42,12 +66,28 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+            - name: nginx-tmp
+              mountPath: /tmp
+            - name: nginx-log
+              mountPath: /var/log/nginx
           livenessProbe:
             httpGet:
               path: /health
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
           readinessProbe:
             httpGet:
@@ -55,7 +95,17 @@ spec:
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3
             failureThreshold: 3
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-log
+          emptyDir: {}
 
 ---
 apiVersion: v1
@@ -65,6 +115,7 @@ metadata:
   namespace: portfolio-app
   labels:
     app: ola-portfolio-app
+    managed-by: argocd
 spec:
   type: ClusterIP
   ports:

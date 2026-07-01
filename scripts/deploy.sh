@@ -1,74 +1,17 @@
 #!/bin/bash
-
-# Production deployment script
-# Usage: ./deploy.sh <environment> <image-tag>
+# Deprecated: application deploys are GitOps-only (Argo CD + ci-build-push.yml).
+# Use: push to main → CI builds image → updates gitops/apps/portfolio-app/deployment.yaml → Argo CD syncs.
+#
+# This script remains for documentation compatibility only.
 
 set -e
 
-ENVIRONMENT=${1:-"dev"}
-IMAGE_TAG=${2:-"latest"}
-
-if [ -z "$ENVIRONMENT" ] || [ -z "$IMAGE_TAG" ]; then
-    echo "Usage: $0 <environment> <image-tag>"
-    echo "Example: $0 dev v1.0.0"
-    exit 1
-fi
-
-echo "🚀 Deploying to $ENVIRONMENT environment with image tag: $IMAGE_TAG"
-
-# HCL tfvars cannot be sourced as shell; ACR/AKS/RG come from terraform output below.
-if [ ! -f "infra/terraform/envs/$ENVIRONMENT/terraform.tfvars" ]; then
-    echo "Error: Environment configuration not found: infra/terraform/envs/$ENVIRONMENT/terraform.tfvars"
-    exit 1
-fi
-
-# Get ACR name and AKS details from Terraform outputs
-cd infra/terraform
-ACR_NAME=$(terraform output -raw acr_login_server | cut -d'.' -f1)
-AKS_NAME=$(terraform output -raw aks_cluster_name)
-RESOURCE_GROUP=$(terraform output -raw resource_group_name)
-WORKLOAD_IDENTITY_CLIENT_ID=$(terraform output -raw workload_identity_client_id)
-cd ../..
-
-# Get AKS credentials
-echo "📋 Getting AKS credentials..."
-az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing
-
-# Update deployment manifest with image and workload identity (Key Vault CSI)
-echo "📝 Updating deployment manifest..."
-FULL_IMAGE_NAME="$ACR_NAME.azurecr.io/ola-portfolio-app:$IMAGE_TAG"
-
-sed -i.bak "s|IMAGE_PLACEHOLDER|$FULL_IMAGE_NAME|g" k8s/deployment.yaml
-sed -i.bak "s/WORKLOAD_IDENTITY_CLIENT_ID_PLACEHOLDER/$WORKLOAD_IDENTITY_CLIENT_ID/g" k8s/serviceaccount.yaml
-sed -i.bak "s/WORKLOAD_IDENTITY_CLIENT_ID_PLACEHOLDER/$WORKLOAD_IDENTITY_CLIENT_ID/g" k8s/secretproviderclass.yaml
-
-# Apply Kubernetes manifests
-echo "☸️  Applying Kubernetes manifests..."
-
-kubectl apply -f k8s/serviceaccount.yaml
-kubectl apply -f k8s/secretproviderclass.yaml
-kubectl apply -f k8s/deployment.yaml
-kubectl apply -f k8s/service.yaml
-kubectl apply -f k8s/hpa.yaml
-kubectl apply -f k8s/pdb.yaml
-kubectl apply -f k8s/networkpolicy.yaml
-
-# Wait for rollout
-echo "⏳ Waiting for deployment rollout..."
-kubectl rollout status deployment/ola-portfolio-app --timeout=5m
-
-# Verify deployment
-echo "✅ Verifying deployment..."
-kubectl get pods -l app=ola-portfolio-app
-kubectl get svc ola-portfolio-service
-
-# Restore original manifests (placeholders for next run)
-mv k8s/deployment.yaml.bak k8s/deployment.yaml
-mv k8s/serviceaccount.yaml.bak k8s/serviceaccount.yaml
-mv k8s/secretproviderclass.yaml.bak k8s/secretproviderclass.yaml
-
-echo "🎉 Deployment completed successfully!"
+echo "Application deploys use GitOps — not kubectl apply from k8s/."
 echo ""
-echo "Application is available at:"
-kubectl get svc ola-portfolio-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-
+echo "  1. Push app changes to main"
+echo "  2. CI (ci-build-push.yml) builds, scans, and pushes the image to ACR"
+echo "  3. CI updates gitops/apps/portfolio-app/deployment.yaml with the commit SHA"
+echo "  4. Argo CD syncs gitops/apps/portfolio-app/ to the portfolio-app namespace"
+echo ""
+echo "See GITOPS_ARCHITECTURE.md and gitops/README.md"
+exit 1

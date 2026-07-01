@@ -60,7 +60,7 @@ jobs:
         working-directory: ./app
         env:
           CI: true
-        run: npm test -- --coverage --watchAll=false --passWithNoTests
+        run: npm test -- --coverage --watchAll=false
 
       - name: SonarCloud Scan
         if: env.SONAR_TOKEN != ''

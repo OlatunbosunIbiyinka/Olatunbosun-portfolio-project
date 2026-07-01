@@ -46,7 +46,9 @@ gitops/
 ├── apps/
 │   ├── portfolio-app.yaml          # ArgoCD Application definition
 │   └── portfolio-app/
-│       ├── deployment.yaml         # Kubernetes Deployment + Service
+│       ├── deployment.yaml         # Deployment + Service (hardened, CI-updated image)
+│       ├── hpa.yaml                # Horizontal Pod Autoscaler
+│       ├── pdb.yaml                # Pod Disruption Budget
 │       ├── ingress.yaml            # olatunbosun.dev public ingress
 │       └── networkpolicy-ingress.yaml
 ├── platform/

@@ -139,8 +139,8 @@ See [GITOPS_ARCHITECTURE.md](GITOPS_ARCHITECTURE.md) and [docs/ADR-ACR-private-b
 .
 ├── app/                          # React portfolio (Dockerfile → nginx:8080)
 ├── gitops/
-│   └── apps/portfolio-app/       # Argo CD deployment manifests (primary deploy path)
-├── k8s/                          # Hardened reference manifests (HPA, PDB, netpol)
+│   └── apps/portfolio-app/       # Argo CD — single source of truth for the app
+├── k8s/                          # Cluster bootstrap only (Hubble, Cilium netpol) — see k8s/README.md
 ├── infra/terraform/
 │   ├── modules/                  # vnet, aks, acr, keyvault, github-oidc, argocd, bastion-jumpbox
 │   ├── envs/

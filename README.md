@@ -36,6 +36,10 @@ Bootstrap and stable phases keep heavy networking optional until the cluster is 
 
 ## Architecture
 
+![Platform architecture — GitHub Actions, Terraform, private AKS, Argo CD GitOps](app/public/architecture.png)
+
+*Platform diagram (designed end-state). What is live on dev today is in [Live vs designed](#live-vs-designed).*
+
 ```
 Developer push (app/ or infra/)
         │

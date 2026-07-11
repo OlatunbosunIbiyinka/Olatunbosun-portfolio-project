@@ -10,7 +10,7 @@ const projectResponse =
   'His flagship project is an end-to-end cloud platform portfolio on private AKS: Terraform infrastructure, three GitHub Actions pipelines, GitOps with Argo CD, Trivy/Checkov/SonarCloud gates, and full architecture documentation. Explore it on GitHub or the Architecture section on this site.';
 
 const aboutResponse =
-  'Olatunbosun Ibiyinka is a Platform / DevOps Engineer at Nimbus Compute. He helps teams ship software faster and safer through cloud infrastructure, CI/CD automation, container platforms, and DevSecOps — plus a personal portfolio that proves full-stack platform delivery depth.';
+  'Olatunbosun Ibiyinka is a Platform / DevOps Engineer at Nimbus Compute. He builds platforms, not just infrastructure — secure, cloud-native foundations with IaC, Kubernetes, DevSecOps, and automation, backed by a private AKS portfolio that proves full-stack platform delivery.';
 
 const rolesCanFillResponse =
   'Strong fits: Platform Engineer, DevOps Engineer, Cloud Platform Engineer, Azure DevOps Engineer, Kubernetes Platform Engineer, DevSecOps Engineer, CI/CD / Release Engineer, and Cloud Infrastructure Engineer. Also well suited to SRE (platform-focused), internal developer platform work, and consulting-style platform delivery — based on his Nimbus experience and full-stack Azure/Kubernetes portfolio.';

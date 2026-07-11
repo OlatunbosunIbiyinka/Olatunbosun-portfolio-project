@@ -41,14 +41,16 @@ const Hero = () => {
         </div>
 
         <h2 className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-white mb-8 max-w-4xl mx-auto leading-relaxed">
-          I help teams ship software{' '}
-          <span className="gradient-text">faster, safer, and at scale</span>
+          I build platforms,{' '}
+          <span className="gradient-text">not just infrastructure</span>
         </h2>
 
-        <p className="text-lg sm:text-xl text-gray-300 mb-12 max-w-2xl mx-auto leading-relaxed">
-          Cloud infrastructure, CI/CD automation, container platforms, and DevSecOps —
-          from first commit to production-ready delivery. Built for reliability,
-          security, and teams that need to move with confidence.
+        <p className="text-lg sm:text-xl text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+          I design secure, cloud-native foundations that simplify how teams develop,
+          deploy, and operate software — through Infrastructure as Code, Kubernetes,
+          DevSecOps, observability, and automation. My focus is reusable platform
+          capabilities that improve developer experience, operational resilience, and
+          long-term scalability.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">

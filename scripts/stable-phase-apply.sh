@@ -21,6 +21,15 @@ PHASE="${2:-}"
 log() { printf '[stable-phase] %s\n' "$*"; }
 die() { log "ERROR: $*"; exit 1; }
 
+normalize_azure_rid() {
+  local id="${1:-}"
+  id="${id//\/resourcegroups\//\/resourceGroups\/}"
+  id="${id//\/RESOURCEGROUPS\//\/resourceGroups\/}"
+  id="${id//\/managedclusters\//\/managedClusters\/}"
+  id="${id//\/MANAGEDCLUSTERS\//\/managedClusters\/}"
+  printf '%s' "$id"
+}
+
 [[ "$ACTION" == "plan" || "$ACTION" == "apply" ]] || die "Usage: bash scripts/stable-phase-apply.sh [plan|apply] <1-5>"
 [[ "$PHASE" =~ ^[1-5]$ ]] || die "Phase must be 1-5"
 
@@ -32,7 +41,7 @@ STATE=$(az aks show -g "$RG" -n "$AKS" --query provisioningState -o tsv 2>/dev/n
 
 [[ -f "$VAR_FILE" ]] || die "Missing $VAR_FILE — cp envs/dev/terraform.tfvars.example envs/dev/terraform.tfvars"
 
-AKS_ID=$(az aks show -g "$RG" -n "$AKS" --query id -o tsv)
+AKS_ID=$(normalize_azure_rid "$(az aks show -g "$RG" -n "$AKS" --query id -o tsv)")
 
 PHASE_FILES=(
   "$STABLE/phase1-workload-pool.tfvars"

@@ -15,6 +15,16 @@ EXAMPLE="${TF_DIR}/envs/dev/terraform.tfvars.example"
 
 log() { printf '[stage2] %s\n' "$*"; }
 
+# azurerm resource ID parser requires exact segment casing (az CLI often returns resourcegroups).
+normalize_azure_rid() {
+  local id="${1:-}"
+  id="${id//\/resourcegroups\//\/resourceGroups\/}"
+  id="${id//\/RESOURCEGROUPS\//\/resourceGroups\/}"
+  id="${id//\/managedclusters\//\/managedClusters\/}"
+  id="${id//\/MANAGEDCLUSTERS\//\/managedClusters\/}"
+  printf '%s' "$id"
+}
+
 if [[ ! -f "$VAR_FILE" ]]; then
   log "Creating $VAR_FILE from bootstrap example..."
   cp "$EXAMPLE" "$VAR_FILE"
@@ -36,7 +46,7 @@ cd "${TF_DIR}"
 terraform init -upgrade
 
 AKS_STATE=$(az aks show -g "$RG" -n "$AKS" --query provisioningState -o tsv 2>/dev/null || echo "Missing")
-AKS_ID=$(az aks show -g "$RG" -n "$AKS" --query id -o tsv 2>/dev/null || true)
+AKS_ID=$(normalize_azure_rid "$(az aks show -g "$RG" -n "$AKS" --query id -o tsv 2>/dev/null || true)")
 
 # AKS gone from Azure but still in state (e.g. failed outbound replace) — drop state so apply recreates
 if [[ "$AKS_STATE" == "Missing" ]] && terraform state list 2>/dev/null | grep -qE '^module\.(aks|argocd)\.'; then
@@ -69,7 +79,7 @@ if [[ "$AKS_STATE" == "Creating" ]]; then
     [[ "$AKS_STATE" == "Failed" ]] && { log "AKS Failed during wait — re-run this script"; exit 1; }
     sleep 60
   done
-  AKS_ID=$(az aks show -g "$RG" -n "$AKS" --query id -o tsv)
+  AKS_ID=$(normalize_azure_rid "$(az aks show -g "$RG" -n "$AKS" --query id -o tsv)")
 fi
 
 if [[ -n "$AKS_ID" ]] && ! terraform state list 2>/dev/null | grep -q 'module.aks.azurerm_kubernetes_cluster.aks'; then
@@ -89,10 +99,11 @@ if [[ -z "$AKS_ID" ]]; then
     -target="azurerm_user_assigned_identity.workload_identity" \
     -target="azurerm_role_assignment.workload_identity_keyvault_secrets_user" \
     -auto-approve
-  AKS_ID=$(az aks show -g "$RG" -n "$AKS" --query id -o tsv)
+  AKS_ID=$(normalize_azure_rid "$(az aks show -g "$RG" -n "$AKS" --query id -o tsv)")
 fi
 
 log "Finishing stack (VM AKS RBAC, remaining resources)..."
+log "AKS_ID=$AKS_ID"
 terraform apply "${APPLY_COMMON[@]}" -var="jumpbox_aks_cluster_id=${AKS_ID}" -auto-approve
 
 log "Bootstrap AKS done."

@@ -94,6 +94,13 @@ locals {
   create_user_assigned_nat = local.aks_outbound_type == "userAssignedNATGateway"
   # Never enable classic UDR for AKS-native outbound types
   enable_udr_route_table = false
+
+  # az CLI often returns /resourcegroups/; azurerm role scopes require /resourceGroups/
+  jumpbox_aks_cluster_id_normalized = (
+    var.jumpbox_aks_cluster_id == null || var.jumpbox_aks_cluster_id == ""
+    ? null
+    : replace(replace(var.jumpbox_aks_cluster_id, "/resourcegroups/", "/resourceGroups/"), "/managedclusters/", "/managedClusters/")
+  )
 }
 
 # Virtual Network for enterprise-grade network isolation

@@ -191,17 +191,17 @@ module "aks" {
     module.vnet.aks_subnet_nat_gateway_association_id,
   ]
   # Outbound: loadBalancer | managedNATGateway | userAssignedNATGateway (no UDR)
-  outbound_type                           = local.aks_outbound_type
-  managed_nat_gateway_outbound_ip_count   = var.managed_nat_gateway_outbound_ip_count
-  nat_gateway_idle_timeout_in_minutes     = var.nat_gateway_idle_timeout_in_minutes
-  kubernetes_version                      = var.kubernetes_version
-  enable_log_analytics        = var.enable_log_analytics
-  enable_aks_monitoring_addon = var.enable_aks_monitoring_addon
-  log_analytics_workspace_id  = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
-  oidc_issuer_enabled         = true
-  workload_identity_enabled   = true
-  azure_policy_enabled        = var.enable_azure_policy
-  local_account_disabled      = var.disable_local_accounts
+  outbound_type                         = local.aks_outbound_type
+  managed_nat_gateway_outbound_ip_count = var.managed_nat_gateway_outbound_ip_count
+  nat_gateway_idle_timeout_in_minutes   = var.nat_gateway_idle_timeout_in_minutes
+  kubernetes_version                    = var.kubernetes_version
+  enable_log_analytics                  = var.enable_log_analytics
+  enable_aks_monitoring_addon           = var.enable_aks_monitoring_addon
+  log_analytics_workspace_id            = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null
+  oidc_issuer_enabled                   = true
+  workload_identity_enabled             = true
+  azure_policy_enabled                  = var.enable_azure_policy
+  local_account_disabled                = var.disable_local_accounts
   # Production-Grade: Use group names (looked up via data sources) or fallback to Object IDs
   admin_group_object_ids = concat(
     # Lookup groups by name (preferred - production-grade)
@@ -448,8 +448,8 @@ module "bastion_jumpbox" {
   enable_tunneling      = var.enable_bastion_tunneling
 
   # Trusted Execution Zone Configuration — AKS bindings deferred until stage 2 (jumpbox_aks_cluster_id set from ops VM)
-  aks_cluster_id             = var.jumpbox_aks_cluster_id
-  enable_aks_role_assignment = var.jumpbox_aks_cluster_id != null && var.jumpbox_aks_cluster_id != ""
+  aks_cluster_id             = local.jumpbox_aks_cluster_id_normalized
+  enable_aks_role_assignment = local.jumpbox_aks_cluster_id_normalized != null && local.jumpbox_aks_cluster_id_normalized != ""
   acr_id                     = module.acr.acr_id
   key_vault_id               = module.keyvault.key_vault_id
   resource_group_id          = azurerm_resource_group.rg.id

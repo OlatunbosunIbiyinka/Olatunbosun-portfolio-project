@@ -15,19 +15,18 @@ This project is **private by default**. Domain setup adds one **controlled publi
 | Path | How it works |
 |------|----------------|
 | **Cluster & workloads** | Private AKS API; app `ClusterIP`; ACR / Key Vault via **private endpoints** |
-| **Outbound (internet)** | AKS subnet uses **`userDefinedRouting` + UDR** → **NAT Gateway** (predictable egress IP) |
-| **Inbound (portfolio only)** | **NGINX Ingress** `LoadBalancer` gets a **public IP** — the only intended entry from the internet |
-| **Operations** | Bastion → **ops VM** in the VNet (`kubectl`, Helm, Terraform phase 2) — not from a laptop to the private API |
+| **Outbound (internet)** | Dev default: AKS **`loadBalancer`**. Designed: **`userAssignedNATGateway`** (no UDR) |
+| **Inbound (portfolio only)** | **NGINX Ingress** `LoadBalancer` public IP — the only intended internet entry |
+| **Operations** | Bastion → **ops VM** in the VNet (`kubectl`, Helm, Terraform) |
 
 ```
                     INBOUND (public, deliberate)
 Internet ──DNS──► Ingress LB (public IP) ──► portfolio-app pods
 
-                    OUTBOUND (private platform default)
-pods / nodes ──UDR──► NAT Gateway ──► Internet
+                    OUTBOUND
+nodes ── loadBalancer (live) or userAssigned NAT (designed) ──► Internet
                          │
                          ├── Let's Encrypt ACME API (cert-manager)
-                         ├── Container registries / GitHub (where not private-endpoint)
                          └── Other external dependencies
 
                     NO public path
@@ -36,12 +35,12 @@ Private AKS API · ClusterIP services · ACR/KV private endpoints
 
 **Implications for this guide**
 
-- Run **all** `kubectl` / `helm` steps from the **ops VM** (or another VNet-connected host), not your home machine.
-- **cert-manager** talks to Let's Encrypt **outbound via NAT**; the **HTTP-01 challenge** is answered **inbound** on the Ingress public IP (port 80).
+- Run **all** `kubectl` / `helm` steps from the **ops VM** (or another VNet-connected host).
+- **cert-manager** needs outbound HTTPS to Let's Encrypt; HTTP-01 is answered inbound on the Ingress public IP (port 80).
 - Do **not** switch the app Service to `LoadBalancer` — keep `ClusterIP`; only Ingress exposes the site.
-- If certificates hang on `Pending`, check **both** Porkbun DNS **and** NAT/UDR egress (cert-manager must reach ACME).
+- If certificates hang on `Pending`, check Porkbun DNS, LB health probes (`/healthz`), and egress.
 
-See also: `docs/ARCHITECTURE_AND_INTERVIEW_PRESENTATION.md`, Terraform `outbound_type = userDefinedRouting` when NAT is enabled.
+See also: `docs/ARCHITECTURE_AND_INTERVIEW_PRESENTATION.md`.
 
 ---
 

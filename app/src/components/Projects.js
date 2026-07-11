@@ -32,13 +32,13 @@ const projects = [
     title: 'Secure Cloud Network Architecture',
     featured: false,
     description:
-      'Enterprise-grade Azure networking — isolated environments, private connectivity, controlled access, and security layers that support regulated and production workloads.',
-    stack: ['Azure VNet', 'Bastion', 'Key Vault', 'Private Endpoints', 'NSG', 'NAT Gateway', 'RBAC'],
+      'Azure networking for a private platform — isolated subnets, private connectivity, Bastion access, and controlled public inbound via Ingress only.',
+    stack: ['Azure VNet', 'Bastion', 'Key Vault', 'Private Endpoints', 'NSG', 'RBAC'],
     outcomes: [
-      'Zero-trust network design with minimal public exposure',
+      'Zero-trust oriented design with minimal public exposure',
       'Least-privilege access and identity-based authentication',
       'Secure foundation for containers, registries, and secrets',
-      'Compliance-ready network segmentation',
+      'Clear inbound vs outbound boundaries (Ingress vs cluster egress)',
     ],
     links: {},
     gradient: 'from-purple/20 to-pink-600/20',

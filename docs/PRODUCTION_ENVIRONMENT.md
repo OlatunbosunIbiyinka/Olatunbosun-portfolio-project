@@ -1,7 +1,7 @@
 # Production Environment — Target State
 
 > **Purpose:** What we would implement for a full **production** deployment of this platform end-to-end.  
-> **Status today:** **Dev** validates the architecture. **Staging** and **prod** are **codified in Terraform** (`envs/staging/`, `envs/prod/`) but not provisioned. Items marked **(codified)** exist in repo config; items marked **(to add)** are planned prod enhancements.
+> **Status today:** **Dev** validates the architecture. **Staging** and **prod** are **codified in Terraform** (`envs/staging/`, `envs/prod/`) but not provisioned. Items marked **(codified)** exist in repo config; items marked **(to add)** are planned prod enhancements. Dev egress is **`loadBalancer`**; prod may use **`userAssignedNATGateway`** — not classic UDR.
 
 **How to use this document:** Interview and design reference — “dev proves the pattern; this is the production target.”
 
@@ -51,7 +51,7 @@
 | **VNet** | `10.0.0.0/16`, dedicated subnets (AKS, PE, Bastion, operations) **(codified)** |
 | **Private AKS** | API server VNet-only **(codified)** |
 | **Private endpoints** | ACR + Key Vault; public access disabled **(codified)** |
-| **NAT Gateway + UDR** | Predictable egress; `userDefinedRouting` aligned with Terraform **(codified)** |
+| **User-assigned NAT (optional)** | Predictable egress via `userAssignedNATGateway` (no UDR) **(codified)** |
 | **NSGs** | PE subnet (HTTPS from AKS only); ops subnet restricted **(codified)** |
 | **Private DNS** | `privatelink.azurecr.io`, `privatelink.vaultcore.azure.net` **(codified)** |
 | **Hub/spoke or firewall** | Azure Firewall or hub VNet for prod egress filtering **(to add — org dependent)** |

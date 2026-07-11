@@ -2,6 +2,8 @@
 
 > **Purpose:** A Principal-engineer-grade walkthrough of this portfolio platform — from Terraform bootstrap through GitOps delivery, security, monitoring, and recovery — with a timed presentation script aligned to the assessment brief.
 
+> **Live vs designed (read first):** Dev is deployed at [olatunbosun.dev](https://olatunbosun.dev). **Outbound today = `loadBalancer`.** Predictable egress is designed as **`userAssignedNATGateway`** (no classic UDR). **Cilium / Hubble** and **Prometheus / Grafana** appear in diagrams as **target / phased** capabilities — do not present them as guaranteed live unless you verified the cluster. Azure Policy and a workload pool are applied via stable phases. Front Door / WAF are **not** deployed. Older UDR+NAT notes live under `docs/archive/`.
+
 ---
 
 ## Table of Contents
@@ -26,9 +28,9 @@ This project is an **Azure-native, private Kubernetes platform** that provisions
 | **Supply chain** | Build, scan, push immutable images | GitHub Actions (self-hosted runner in VNet) |
 | **Runtime** | Deploy, reconcile, heal workloads | Argo CD in-cluster |
 
-**Why this impresses at Principal level:** Security is structural, not bolted on. CI never holds cluster credentials. Private endpoints, Workload Identity, Cilium network policy, and OIDC federation are first-class design constraints — not afterthoughts. The trade-offs (plan-only CI for infra, self-hosted runner for private ACR) are documented with ADRs and enforced in code.
+**Why this impresses at Principal level:** Security is structural, not bolted on. CI never holds cluster credentials. Private endpoints, Workload Identity, network policy (Azure NPM live; Cilium phased), and OIDC federation are first-class design constraints — not afterthoughts. The trade-offs (plan-only CI for infra, self-hosted runner for private ACR, phased egress/Cilium) are documented and enforced in code.
 
-**Honest scope note:** **Dev is deployed** (`uksouth`). **Staging and prod are designed and codified** in `envs/staging/` and `envs/prod/` with isolated state keys and production DR settings (ACR geo-replication, Key Vault purge protection) — ready to apply, not yet provisioned.
+**Honest scope note:** **Dev is deployed** (`uksouth`). **Staging and prod are designed and codified** in `envs/staging/` and `envs/prod/` — ready to apply, not yet provisioned. Observability on demo day is typically Azure Monitor / Container Insights plus Argo health — not a full Prometheus stack unless you installed it.
 
 ---
 
@@ -170,7 +172,7 @@ flowchart TB
 
 | Subnet | Role |
 |--------|------|
-| `aks-subnet` | AKS node pools; outbound via NAT Gateway (`userDefinedRouting`) |
+| `aks-subnet` | AKS node pools; outbound via `loadBalancer` today (optional `userAssignedNATGateway` — no UDR) |
 | `private-endpoints` | ACR + Key Vault private endpoints; NSG allows HTTPS from AKS subnet only |
 | `AzureBastionSubnet` | Managed Bastion — no public IP on ops VM |
 | `operations-subnet` | Jumpbox / self-hosted CI runner |
@@ -787,13 +789,13 @@ Use this table to tick off each requirement during the interview.
 
 > "Key provisioning decisions:
 >
-> **First**, Azure CNI **Overlay** with **Cilium** as both dataplane and network policy engine. That avoids VNet IP exhaustion while giving me Kubernetes NetworkPolicy and Hubble observability.
+> **First**, Azure CNI **Overlay**. Network policy starts with **Azure NPM** for a stable bootstrap; **Cilium** (dataplane + policy + Hubble) is a deliberate later phase so demos are not risked by a dataplane cutover.
 >
-> **Second**, a **NAT Gateway** on the AKS subnet for predictable egress IPs — important for allowlisting and auditing outbound traffic.
+> **Second**, egress is **`loadBalancer`** for reliability on a BYO VNet. When a stable egress IP is required, the designed path is **`userAssignedNATGateway`** (NAT on the subnet — **not** classic UDR + NAT, which broke node bootstrap in practice).
 >
 > **Third**, **private endpoints** for ACR and Key Vault. ACR public access is disabled. An NSG on the private endpoint subnet only allows HTTPS from the AKS subnet.
 >
-> **Fourth**, node pool separation: a **system pool** tainted `CriticalAddonsOnly` for CoreDNS and metrics-server, and a **workload pool** for application pods. That prevents application churn from starving platform components.
+> **Fourth**, node pool separation: a **system pool** for critical add-ons, and a **workload pool** for application pods.
 >
 > **Fifth**, the **Trusted Execution Zone** — an operations VM behind Azure Bastion with no public IP. It hosts the self-hosted GitHub runner and is the only place that can run kubectl against the private API server, aside from in-cluster controllers."
 
@@ -849,11 +851,11 @@ Use this table to tick off each requirement during the interview.
 
 > "**Monitoring** operates at three levels:
 >
-> Platform: Log Analytics and Container Insights provisioned by Terraform. Key Vault audit events stream to the same workspace.
+> Platform: Log Analytics and Container Insights when enabled by Terraform. Key Vault audit events can stream to the same workspace.
 >
-> Cluster: Prometheus, Grafana, and Alertmanager via kube-prometheus-stack — installed from `monitoring-setup/setup-monitoring.py`. Alertmanager sends email via Gmail.
+> Cluster: Argo CD for deploy health; Prometheus/Grafana is optional tooling — not assumed on every demo cluster.
 >
-> Network: Cilium Hubble for flow visibility, with ServiceMonitor integration for Prometheus.
+> Network: Cilium Hubble belongs to the **phased** Cilium rollout.
 >
 > Deploy-time: the CI smoke test is my deployment health gate.
 >

@@ -106,7 +106,7 @@ export const intents = [
   {
     keywords: ['terraform', 'infrastructure', 'iac', 'azure', 'vnet', 'network', 'aks', 'kubernetes', 'k8s', 'gitops', 'argocd', 'argo'],
     response:
-      'Core stack: Terraform on Azure (VNet, private AKS, ACR, Key Vault, Bastion), Kubernetes with GitOps via Argo CD, Cilium networking, and infrastructure validated in CI with Checkov. The architecture diagram on this site shows the full flow.',
+      'Core stack: Terraform on Azure (VNet, private AKS, ACR, Key Vault, Bastion), Kubernetes with GitOps via Argo CD, and infrastructure validated in CI with Checkov. Cilium and user-assigned NAT are phased designs — see the Architecture section and README live-vs-designed table.',
   },
   {
     keywords: ['cicd', 'ci/cd', 'pipeline', 'devsecops', 'trivy', 'sonar', 'checkov', 'security', 'scan'],
@@ -116,7 +116,7 @@ export const intents = [
   {
     keywords: ['skill', 'skills', 'stack', 'tech', 'technology', 'tools'],
     response:
-      'Key skills: Terraform, Azure, Kubernetes/AKS, GitHub Actions, Docker, Argo CD, Helm, Trivy, Checkov, SonarCloud, Prometheus/Grafana, and production-style operations (Bastion access, runbooks, smoke tests). See the Skills section for the full breakdown.',
+      'Key skills: Terraform, Azure, Kubernetes/AKS, GitHub Actions, Docker, Argo CD, Helm, Trivy, Checkov, SonarCloud, Azure Monitor / Log Analytics, and production-style operations (Bastion access, runbooks, smoke tests). See the Skills section for the full breakdown.',
   },
   {
     keywords: ['contact', 'email', 'linkedin', 'reach', 'connect', 'cv', 'resume', 'download'],

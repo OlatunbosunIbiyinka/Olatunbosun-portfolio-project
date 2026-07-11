@@ -13,7 +13,7 @@ const skillCategories = [
   },
   {
     title: 'Containers & Orchestration',
-    skills: ['Kubernetes', 'AKS', 'Node Pools', 'HPA / PDB', 'Service Mesh Ready', 'Rolling Deploys'],
+    skills: ['Kubernetes', 'AKS', 'Node Pools', 'HPA / PDB', 'Rolling Deploys', 'CNI Overlay'],
     color: 'from-cyan/30 to-purple/20',
   },
   {
@@ -23,7 +23,7 @@ const skillCategories = [
   },
   {
     title: 'Monitoring & Reliability',
-    skills: ['Prometheus', 'Grafana', 'Azure Monitor', 'Log Analytics', 'Health Checks', 'Smoke Tests'],
+    skills: ['Azure Monitor', 'Log Analytics', 'Container Insights', 'Health Checks', 'Smoke Tests', 'Argo CD Health'],
     color: 'from-purple/30 to-cyan/20',
   },
   {

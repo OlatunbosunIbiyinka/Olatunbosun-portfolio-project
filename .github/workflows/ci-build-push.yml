@@ -9,13 +9,8 @@ name: CI - Build and Push Images
 # Triggers only on app/ changes — GitOps commits do not re-trigger this workflow.
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-    paths:
-      - 'app/**'
-      - '.github/workflows/ci-build-push.yml'
+  # AKS / ACR / self-hosted runner path — parked while Azure is torn down for cost.
+  # Re-enable push triggers after bootstrap; until then use workflow_dispatch only.
   workflow_dispatch:
 
 concurrency:

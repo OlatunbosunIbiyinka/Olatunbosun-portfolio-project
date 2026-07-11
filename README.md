@@ -4,20 +4,21 @@
 [![CI - Quality](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/ci.yml/badge.svg)](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/ci.yml)
 [![Terraform Validation](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/terraform.yml/badge.svg)](https://github.com/OlatunbosunIbiyinka/Olatunbosun-portfolio-project/actions/workflows/terraform.yml)
 
-**Live site:** [https://olatunbosun.dev](https://olatunbosun.dev)
+**Live site:** [https://olatunbosun.dev](https://olatunbosun.dev) (static — GitHub Pages)
 
-A production-pattern **React portfolio** on **private Azure Kubernetes Service (AKS)**, provisioned with **Terraform**, delivered via **GitOps (Argo CD)**, and automated through **GitHub Actions** with OIDC — CI builds images; Argo CD deploys.
+A production-pattern **React portfolio** designed for **private Azure Kubernetes Service (AKS)** — **Terraform**, **GitOps (Argo CD)**, and **GitHub Actions** with OIDC. The full Azure platform is IaC in this repo (recreatable); the public site currently runs as a **static GitHub Pages** deploy so the domain stays live without AKS cost.
 
 ---
 
 ## Live vs designed
 
-| Capability | Live (dev) | Designed / phased |
-|------------|------------|-------------------|
-| Private AKS + Ingress + TLS | Yes — [olatunbosun.dev](https://olatunbosun.dev) | — |
-| Outbound | **`loadBalancer`** | Phase 3: **`userAssignedNATGateway`** (NAT on subnet) |
+| Capability | Live now | Designed / recreatable |
+|------------|----------|------------------------|
+| Portfolio UI at [olatunbosun.dev](https://olatunbosun.dev) | **Yes — GitHub Pages** (static) | Same `app/` on private AKS + Ingress + TLS |
+| Private AKS + Argo CD + ACR + Bastion | Parked (torn down for cost) | Terraform + GitOps in this repo |
+| Outbound (when AKS is up) | — | Bootstrap: `loadBalancer`; Phase 3: `userAssignedNATGateway` |
 
-Bootstrap and stable phases keep heavy networking optional until the cluster is healthy. Prefer AKS-native `userAssignedNATGateway` when predictable egress is needed.
+Screenshots and docs show the full platform. To bring Azure back: follow [docs/QUICK_START.md](docs/QUICK_START.md). Static hosting: [docs/STATIC_SITE.md](docs/STATIC_SITE.md).
 
 ---
 
@@ -90,9 +91,15 @@ Infrastructure (manual apply from ops VM / Bastion path):
 
 ## CI/CD pipelines
 
-Three **independent** workflows, triggered by path filters on `main` and `develop`.
+### 1. Deploy static site (`.github/workflows/pages.yml`) — **live path**
 
-### 1. CI — Quality (`.github/workflows/ci.yml`)
+| | |
+|--|--|
+| **Trigger** | `app/**` on push to `main`; `workflow_dispatch` |
+| **Runner** | `ubuntu-latest` |
+| **Steps** | `npm ci` → build → **GitHub Pages** (`olatunbosun.dev`) |
+
+### 2. CI — Quality (`.github/workflows/ci.yml`)
 
 | | |
 |--|--|
@@ -100,16 +107,16 @@ Three **independent** workflows, triggered by path filters on `main` and `develo
 | **Runner** | `ubuntu-latest` |
 | **Steps** | `npm ci` → build → tests → SonarCloud (if `SONAR_TOKEN` set) |
 
-### 2. CI — Build and Push (`.github/workflows/ci-build-push.yml`)
+### 3. CI — Build and Push (`.github/workflows/ci-build-push.yml`) — **AKS path (parked)**
 
 | | |
 |--|--|
-| **Trigger** | `app/**` on push; `workflow_dispatch` |
+| **Trigger** | `workflow_dispatch` only while Azure is torn down |
 | **Runner** | `self-hosted` (operations VM in VNet) |
 | **Auth** | GitHub OIDC → ACR push; VM managed identity for smoke test |
 | **Steps** | Buildx → **Trivy** → push `{git-sha}` → update GitOps → bot commit → smoke test |
 
-### 3. Terraform Validation (`.github/workflows/terraform.yml`)
+### 4. Terraform Validation (`.github/workflows/terraform.yml`)
 
 | | |
 |--|--|
@@ -117,7 +124,7 @@ Three **independent** workflows, triggered by path filters on `main` and `develo
 | **Jobs** | fmt → validate → **Checkov** → plan (push only) |
 | **Apply** | **Not in CI** — from ops VM |
 
-### GitOps (Argo CD)
+### GitOps (Argo CD) — when AKS is up
 
 - Application: `gitops/apps/portfolio-app.yaml`
 - Manifests: `gitops/apps/portfolio-app/`
@@ -193,8 +200,9 @@ Stable hardening (ops VM, one phase at a time): `bash scripts/stable-phase-apply
 | [Architecture & interview guide](docs/ARCHITECTURE_AND_INTERVIEW_PRESENTATION.md) | Walkthrough + presentation notes |
 | [Production environment (target)](docs/PRODUCTION_ENVIRONMENT.md) | Prod patterns — not all live on dev |
 | [ADR: Private ACR build](docs/ADR-ACR-private-build-strategy.md) | Why self-hosted runner in VNet |
-| [Quick start](docs/QUICK_START.md) | Clean bootstrap |
-| [Domain setup](docs/DOMAIN_SETUP.md) | Ingress + cert-manager + DNS |
+| [Static site (GitHub Pages)](docs/STATIC_SITE.md) | Always-on UI while AKS is parked |
+| [Quick start](docs/QUICK_START.md) | Clean AKS bootstrap |
+| [Domain setup](docs/DOMAIN_SETUP.md) | Ingress + cert-manager + DNS (AKS path) |
 | [OIDC setup](docs/OIDC_SETUP.md) | GitHub ↔ Azure federation |
 | [Multi-environment](infra/terraform/envs/README.md) | Dev / staging / prod |
 | [Archive](docs/archive/README.md) | Historical notes — not current truth |

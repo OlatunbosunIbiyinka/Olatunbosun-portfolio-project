@@ -32,7 +32,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     dns_service_ip      = var.dns_service_ip
     pod_cidr            = var.pod_cidr # Required for overlay mode
 
-    # AKS-managed NAT (outbound_type = managedNATGateway) — no UDR / BYO NAT required
+    # AKS-managed NAT (outbound_type = managedNATGateway)
     dynamic "nat_gateway_profile" {
       for_each = var.outbound_type == "managedNATGateway" ? [1] : []
       content {

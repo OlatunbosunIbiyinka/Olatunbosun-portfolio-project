@@ -208,8 +208,8 @@ resource "azurerm_nat_gateway_public_ip_association" "nat_gateway" {
   public_ip_address_id = azurerm_public_ip.nat_gateway[0].id
 }
 
-# Legacy UDR route table — only for outbound_type=userDefinedRouting (avoid; prefer AKS-native NAT).
-# userAssignedNATGateway associates NAT to the subnet without a custom default route.
+# Optional route table for outbound_type=userDefinedRouting (unused; stack uses AKS-native egress).
+# userAssignedNATGateway associates NAT to the subnet directly.
 resource "azurerm_route_table" "aks_subnet" {
   count               = var.enable_udr_route_table ? 1 : 0
   name                = "${var.aks_subnet_name}-route-table"
@@ -233,7 +233,7 @@ resource "azurerm_subnet_route_table_association" "aks_subnet" {
   depends_on = [azurerm_route_table.aks_subnet]
 }
 
-# Associate NAT Gateway with AKS subnet (userAssignedNATGateway — no UDR required)
+# Associate NAT Gateway with AKS subnet (userAssignedNATGateway)
 resource "azurerm_subnet_nat_gateway_association" "aks_subnet" {
   count          = var.enable_nat_gateway ? 1 : 0
   subnet_id      = azurerm_subnet.aks_subnet.id

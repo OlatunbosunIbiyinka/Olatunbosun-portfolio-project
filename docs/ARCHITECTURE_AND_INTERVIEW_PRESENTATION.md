@@ -2,7 +2,7 @@
 
 > **Purpose:** A Principal-engineer-grade walkthrough of this portfolio platform — from Terraform bootstrap through GitOps delivery, security, monitoring, and recovery — with a timed presentation script aligned to the assessment brief.
 
-> **Live vs designed (read first):** Dev is deployed at [olatunbosun.dev](https://olatunbosun.dev). **Outbound today = `loadBalancer`.** Predictable egress is designed as **`userAssignedNATGateway`** (no classic UDR). **Cilium / Hubble** and **Prometheus / Grafana** appear in diagrams as **target / phased** capabilities — do not present them as guaranteed live unless you verified the cluster. Azure Policy and a workload pool are applied via stable phases. Front Door / WAF are **not** deployed. Older UDR+NAT notes live under `docs/archive/`.
+> **Live vs designed (read first):** Dev is deployed at [olatunbosun.dev](https://olatunbosun.dev). **Outbound today = `loadBalancer`.** Predictable egress is designed as **`userAssignedNATGateway`**. **Cilium / Hubble** and **Prometheus / Grafana** appear in diagrams as **target / phased** capabilities — do not present them as guaranteed live unless you verified the cluster. Azure Policy and a workload pool are applied via stable phases. Front Door / WAF are **not** deployed.
 
 ---
 
@@ -172,7 +172,7 @@ flowchart TB
 
 | Subnet | Role |
 |--------|------|
-| `aks-subnet` | AKS node pools; outbound via `loadBalancer` today (optional `userAssignedNATGateway` — no UDR) |
+| `aks-subnet` | AKS node pools; outbound via `loadBalancer` today (optional `userAssignedNATGateway`) |
 | `private-endpoints` | ACR + Key Vault private endpoints; NSG allows HTTPS from AKS subnet only |
 | `AzureBastionSubnet` | Managed Bastion — no public IP on ops VM |
 | `operations-subnet` | Jumpbox / self-hosted CI runner |
@@ -791,7 +791,7 @@ Use this table to tick off each requirement during the interview.
 >
 > **First**, Azure CNI **Overlay**. Network policy starts with **Azure NPM** for a stable bootstrap; **Cilium** (dataplane + policy + Hubble) is a deliberate later phase so demos are not risked by a dataplane cutover.
 >
-> **Second**, egress is **`loadBalancer`** for reliability on a BYO VNet. When a stable egress IP is required, the designed path is **`userAssignedNATGateway`** (NAT on the subnet — **not** classic UDR + NAT, which broke node bootstrap in practice).
+> **Second**, egress is **`loadBalancer`** for reliability on a BYO VNet. When a stable egress IP is required, the designed path is **`userAssignedNATGateway`** (associate NAT to the AKS subnet).
 >
 > **Third**, **private endpoints** for ACR and Key Vault. ACR public access is disabled. An NSG on the private endpoint subnet only allows HTTPS from the AKS subnet.
 >

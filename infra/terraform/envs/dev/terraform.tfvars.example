@@ -2,9 +2,9 @@
 #
 # =============================================================================
 # BOOTSTRAP MODE (default)
-# Defer NAT/UDR, Cilium, Azure Policy, monitoring addon, Argo CD, and workload
+# Defer NAT, Cilium, Azure Policy, monitoring addon, Argo CD, and workload
 # pools until the cluster reaches Succeeded. Re-enable in order — see bottom of
-# this file and docs/BOOTSTRAP_FIXES.md → "Stable platform re-enable".
+# this file and docs/archive/BOOTSTRAP_FIXES.md → "Stable platform re-enable".
 # =============================================================================
 
 # Resource Group Configuration
@@ -130,7 +130,7 @@ tags = {
 # Phase 2 — Azure Policy
 # enable_azure_policy = true
 #
-# Phase 3 — AKS-native NAT egress (no UDR; required for custom VNet)
+# Phase 3 — AKS-native NAT egress (custom VNet)
 # aks_outbound_type = "userAssignedNATGateway"
 # # managedNATGateway is invalid with BYO VNet (ManagedNATGatewayWithCustomVNetNotAllowed)
 # Phase 4 — Cilium (may recycle nodes; run during maintenance window)

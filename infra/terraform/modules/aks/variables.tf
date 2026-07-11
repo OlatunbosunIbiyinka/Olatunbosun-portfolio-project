@@ -89,7 +89,7 @@ variable "load_balancer_sku" {
 }
 
 variable "outbound_type" {
-  description = "AKS outbound: loadBalancer | managedNATGateway | userAssignedNATGateway. Avoid userDefinedRouting (UDR hacks)."
+  description = "AKS outbound: loadBalancer | managedNATGateway | userAssignedNATGateway."
   type        = string
   default     = "loadBalancer"
 

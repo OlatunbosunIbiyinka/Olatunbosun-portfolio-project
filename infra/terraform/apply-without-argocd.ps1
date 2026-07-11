@@ -1,7 +1,7 @@
 # Phase 1: Apply all infrastructure EXCEPT ArgoCD (for private AKS from laptop)
 # Use this when the AKS API is private and your laptop cannot reach the cluster API.
 # After this succeeds, connect to the jumpbox VM and run phase 2 (enable_argocd=true).
-# See HELM_CACHE_FIX.md "Private AKS: two-phase apply"
+# See docs/archive/HELM_CACHE_FIX.md "Private AKS: two-phase apply"
 
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot

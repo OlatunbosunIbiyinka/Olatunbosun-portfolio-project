@@ -58,7 +58,7 @@ gitops/
 
 Public URL setup: see **`docs/DOMAIN_SETUP.md`**.
 
-**Network model:** private AKS and ClusterIP services by default; outbound **`loadBalancer`** on live dev (optional **`userAssignedNATGateway`** — no UDR); **Ingress LoadBalancer** is the deliberate public inbound path for `olatunbosun.dev`.
+**Network model:** private AKS and ClusterIP services by default; outbound **`loadBalancer`** on live dev (optional **`userAssignedNATGateway`**); **Ingress LoadBalancer** is the deliberate public inbound path for `olatunbosun.dev`.
 
 ## Getting Started
 

@@ -15,16 +15,9 @@ A production-pattern **React portfolio** on **private Azure Kubernetes Service (
 | Capability | Live (dev) | Designed / phased |
 |------------|------------|-------------------|
 | Private AKS + Ingress + TLS | Yes — [olatunbosun.dev](https://olatunbosun.dev) | — |
-| Outbound | **`loadBalancer`** | Phase 3: **`userAssignedNATGateway`** (NAT on subnet, **no UDR**) |
-| Workload node pool | Yes | `envs/dev/stable/phase1-*.tfvars` |
-| Azure Policy | Yes | `stable/phase2-*.tfvars` |
-| Cilium dataplane / Hubble | Not required on current cluster | Phase 4 |
-| Observability | Azure Monitor / Container Insights (optional) | Prometheus/Grafana optional — not claimed as live |
-| Front Door / WAF | No | Prod target only |
-| Ops VM + self-hosted runner | Yes (for private ACR builds) | — |
-| Staging / prod Azure stacks | Codified only | `envs/staging`, `envs/prod` |
+| Outbound | **`loadBalancer`** | Phase 3: **`userAssignedNATGateway`** (NAT on subnet) |
 
-Classic **UDR + NAT** was evaluated and abandoned (broke node bootstrap). Prefer AKS-native `userAssignedNATGateway` when predictable egress is needed.
+Bootstrap and stable phases keep heavy networking optional until the cluster is healthy. Prefer AKS-native `userAssignedNATGateway` when predictable egress is needed.
 
 ---
 

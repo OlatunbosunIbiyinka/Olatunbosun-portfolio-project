@@ -429,7 +429,7 @@ variable "enable_nsg" {
 }
 
 variable "enable_nat_gateway" {
-  description = "Deprecated switch: if aks_outbound_type is null, true → userAssignedNATGateway (BYO NAT, no UDR). Prefer aks_outbound_type."
+  description = "Deprecated switch: if aks_outbound_type is null, true → userAssignedNATGateway. Prefer aks_outbound_type."
   type        = bool
   default     = false
 }
@@ -438,9 +438,8 @@ variable "aks_outbound_type" {
   description = <<-EOT
     AKS node egress type (preferred over enable_nat_gateway):
       loadBalancer           — bootstrap / simplest (default)
-      userAssignedNATGateway — BYO NAT on aks-subnet, no UDR (required for custom/BYO VNet)
-      managedNATGateway      — AKS-managed NAT only (NOT allowed with custom VNet)
-    Do not use userDefinedRouting.
+      userAssignedNATGateway — BYO NAT on aks-subnet (required for custom/BYO VNet when NAT is needed)
+      managedNATGateway      — AKS-managed NAT only (not for custom VNet)
   EOT
   type        = string
   default     = null

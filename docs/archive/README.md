@@ -1,6 +1,6 @@
 # Archived documentation
 
-Historical upgrade journals, pitch drafts, and ops notes. **Not** the source of truth for the live platform.
+Historical upgrade journals, pitch drafts, incident notes, and ops fix logs. **Not** the source of truth for the live platform.
 
 For recruiters and current ops, use:
 
@@ -10,4 +10,10 @@ For recruiters and current ops, use:
 - [`../QUICK_START.md`](../QUICK_START.md) — bootstrap
 - [`../PRODUCTION_ENVIRONMENT.md`](../PRODUCTION_ENVIRONMENT.md) — **target** prod patterns (not all live on dev)
 
-Some archived files describe **abandoned** patterns (e.g. classic UDR + NAT). Prefer Terraform `aks_outbound_type` and the README live table.
+In this folder (personal / historical only):
+
+- `BOOTSTRAP_FIXES.md` — bootstrap incident log
+- `HELM_CACHE_FIX.md` — Helm cache / two-phase apply notes
+- `TROUBLESHOOTING.md`, `NAT_GATEWAY_UPGRADE.md`, and other upgrade journals
+
+Prefer Terraform `aks_outbound_type` and the README live table over anything in this folder.

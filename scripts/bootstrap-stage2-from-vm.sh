@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stage 2 (ops VM): bootstrap-minimal AKS + finish stack.
-# Defers NAT/UDR, Cilium, policy, monitoring, Argo until stable (see tfvars example).
+# Defers NAT, Cilium, policy, monitoring, Argo until stable (see tfvars example).
 #
 #   tmux new -s tf
 #   bash scripts/bootstrap-stage2-from-vm.sh
@@ -106,7 +106,7 @@ purge_argocd_state() {
 purge_argocd_state
 
 if [[ -z "$AKS_ID" ]]; then
-  log "Creating AKS (bootstrap: no NAT/UDR, azure network policy, ~1–4h)..."
+  log "Creating AKS (bootstrap: loadBalancer egress, azure network policy, ~1–4h)..."
   terraform apply "${APPLY_COMMON[@]}" \
     -target="module.vnet" \
     -target="module.aks" \

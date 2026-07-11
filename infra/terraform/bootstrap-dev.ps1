@@ -2,7 +2,7 @@
 # Usage: .\bootstrap-dev.ps1 [-SkipApply] [-DryRun]
 #
 # Phase 1 creates: RG, VNet, ACR, KV, bootstrap-minimal AKS, Bastion, ops VM, GitHub OIDC.
-# Bootstrap defers: NAT/UDR, Cilium, Azure Policy, workload pool, monitoring addon, Argo CD.
+# Bootstrap defers: NAT, Cilium, Azure Policy, workload pool, monitoring addon, Argo CD.
 #
 # After Phase 1 (~2–3h): Bastion → ops VM → .\scripts\phase2-on-vm.sh
 

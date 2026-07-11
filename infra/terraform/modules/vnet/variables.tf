@@ -92,7 +92,7 @@ variable "enable_nat_gateway" {
 }
 
 variable "enable_udr_route_table" {
-  description = "Associate a custom route table for userDefinedRouting. Prefer managedNATGateway or userAssignedNATGateway instead."
+  description = "Associate a custom route table when outbound_type is userDefinedRouting (unused in this stack)."
   type        = bool
   default     = false
 }

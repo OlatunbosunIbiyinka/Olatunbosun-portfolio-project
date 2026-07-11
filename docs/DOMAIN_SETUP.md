@@ -15,7 +15,7 @@ This project is **private by default**. Domain setup adds one **controlled publi
 | Path | How it works |
 |------|----------------|
 | **Cluster & workloads** | Private AKS API; app `ClusterIP`; ACR / Key Vault via **private endpoints** |
-| **Outbound (internet)** | Dev default: AKS **`loadBalancer`**. Designed: **`userAssignedNATGateway`** (no UDR) |
+| **Outbound (internet)** | Dev default: AKS **`loadBalancer`**. Designed: **`userAssignedNATGateway`** |
 | **Inbound (portfolio only)** | **NGINX Ingress** `LoadBalancer` public IP — the only intended internet entry |
 | **Operations** | Bastion → **ops VM** in the VNet (`kubectl`, Helm, Terraform) |
 
@@ -69,7 +69,7 @@ Internet → Porkbun DNS (A record) → Azure LB (ingress-nginx public IP)   ←
 
 ## Phase 1 — Install NGINX Ingress Controller (ops VM)
 
-From the **ops VM** (Bastion session). The controller creates an Azure **public** LoadBalancer — the portfolio’s only internet-facing entry point. AKS nodes remain private; outbound from the cluster still uses **NAT Gateway + UDR**.
+From the **ops VM** (Bastion session). The controller creates an Azure **public** LoadBalancer — the portfolio’s only internet-facing entry point. AKS nodes remain private; cluster outbound uses the configured AKS outbound type (`loadBalancer` on live dev).
 
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -94,7 +94,7 @@ Record **EXTERNAL-IP** (e.g. `20.x.x.x`) — you need this for Porkbun.
 
 ## Phase 2 — Install cert-manager (ops VM)
 
-cert-manager pods reach `acme-v02.api.letsencrypt.org` **outbound through the NAT Gateway** (UDR on the AKS subnet). No inbound rule is required for that.
+cert-manager pods reach `acme-v02.api.letsencrypt.org` **outbound** via the cluster egress path. No inbound rule is required for that.
 
 ```bash
 helm repo add jetstack https://charts.jetstack.io
@@ -195,7 +195,7 @@ Update public links:
 ### Certificate stuck on `Pending`
 
 - DNS must resolve to the Ingress **public** LB IP before HTTP-01 challenge succeeds (inbound on port 80)
-- cert-manager must reach Let's Encrypt **outbound via NAT Gateway** — verify NAT + UDR on `aks-subnet`:
+- cert-manager must reach Let's Encrypt **outbound** — verify cluster egress (loadBalancer or NAT):
 
 ```bash
 # From ops VM — NAT egress smoke test (optional)
@@ -224,7 +224,7 @@ kubectl describe certificate olatunbosun-dev-tls -n portfolio-app
 
 ### Helm / image pull failures on ops VM
 
-- Ops VM and cluster pull charts/images **outbound via NAT**; if NAT or UDR is misconfigured, Helm installs fail before Ingress exists
+- Ops VM and cluster need working outbound egress; if egress is broken, Helm installs fail before Ingress exists
 
 ### `.dev` requires HTTPS
 
@@ -290,18 +290,6 @@ kubectl annotate ingress argocd-server-ingress -n argocd \
   nginx.ingress.kubernetes.io/whitelist-source-range="203.0.113.50/32" --overwrite
 ```
 
-### Azure CLI SSH extension error (Windows)
-
-Exit code `3221225477` is a **pip crash** inside the Azure CLI install (broken bundled Python). Reinstall fixes it:
-
-```powershell
-winget uninstall Microsoft.AzureCLI
-winget install -e --id Microsoft.AzureCLI
-az extension add --name ssh
-```
-
-**Without fixing CLI:** use the ingress URL above, or Azure Portal → VM → **Connect** → Bastion → **Native client** (OpenSSH `-L` tunnel; no `az ssh` extension).
-
 ---
 
 ## Order of operations (checklist)
@@ -310,13 +298,13 @@ az extension add --name ssh
 [ ] Commit and push GitOps + app changes to main
 [ ] CI builds and deploys latest image via Argo CD
 [ ] Ops VM up (Bastion) — kubectl works against private AKS
-[ ] Confirm NAT Gateway + UDR on aks-subnet (Terraform default when enable_nat_gateway=true)
+[ ] Confirm cluster egress works (loadBalancer today; userAssignedNATGateway optional in Phase 3)
 [ ] Install ingress-nginx on ops VM → note Ingress EXTERNAL-IP (public — not NAT IP)
 [ ] Install cert-manager on ops VM
 [ ] kubectl apply -f gitops/platform/cluster-issuer.yaml
 [ ] Argo syncs ingress + network policy (app Service stays ClusterIP)
 [ ] Porkbun A records → Ingress EXTERNAL-IP
-[ ] Wait for certificate Ready (inbound HTTP-01 + outbound ACME via NAT)
+[ ] Wait for certificate Ready (inbound HTTP-01 + outbound ACME via cluster egress)
 [ ] Test https://olatunbosun.dev
 [ ] Update CV / LinkedIn / GitHub
 ```

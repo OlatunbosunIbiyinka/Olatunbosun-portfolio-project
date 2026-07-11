@@ -54,7 +54,7 @@ output "nat_gateway_public_ip_id" {
 }
 
 output "aks_subnet_route_table_association_id" {
-  description = "ID of the UDR route table association (legacy userDefinedRouting only)."
+  description = "ID of the subnet route table association when enable_udr_route_table is true."
   value       = var.enable_udr_route_table ? azurerm_subnet_route_table_association.aks_subnet[0].id : null
 }
 

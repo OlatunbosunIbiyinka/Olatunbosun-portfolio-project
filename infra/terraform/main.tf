@@ -86,13 +86,13 @@ resource "azurerm_resource_group" "rg" {
 }
 
 locals {
-  # Prefer aks_outbound_type; legacy enable_nat_gateway maps to userAssignedNATGateway (no UDR).
+  # Prefer aks_outbound_type; legacy enable_nat_gateway maps to userAssignedNATGateway.
   aks_outbound_type = coalesce(
     var.aks_outbound_type,
     var.enable_nat_gateway ? "userAssignedNATGateway" : "loadBalancer"
   )
   create_user_assigned_nat = local.aks_outbound_type == "userAssignedNATGateway"
-  # Never enable classic UDR for AKS-native outbound types
+  # Route table only if using outbound_type=userDefinedRouting (not used in this stack)
   enable_udr_route_table = false
 
   # az CLI often returns /resourcegroups/; azurerm role scopes require /resourceGroups/
@@ -190,7 +190,7 @@ module "aks" {
   depends_on = [
     module.vnet.aks_subnet_nat_gateway_association_id,
   ]
-  # Outbound: loadBalancer | managedNATGateway | userAssignedNATGateway (no UDR)
+  # Outbound: loadBalancer | managedNATGateway | userAssignedNATGateway
   outbound_type                         = local.aks_outbound_type
   managed_nat_gateway_outbound_ip_count = var.managed_nat_gateway_outbound_ip_count
   nat_gateway_idle_timeout_in_minutes   = var.nat_gateway_idle_timeout_in_minutes

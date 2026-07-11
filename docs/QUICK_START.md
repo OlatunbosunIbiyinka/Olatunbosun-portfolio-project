@@ -24,9 +24,9 @@ This script:
    - `enable_aks_monitoring_addon = false` (avoids Container Insights timeout)
    - VM tool extensions off (install tools on VM in Phase 2)
 
-**Creates:** `ola-rg-dev`, VNet, private ACR/KV, **bootstrap-minimal AKS** (no NAT/UDR/Cilium), Bastion, ops VM, GitHub OIDC.
+**Creates:** `ola-rg-dev`, VNet, private ACR/KV, **bootstrap-minimal AKS** (loadBalancer egress, azure network policy), Bastion, ops VM, GitHub OIDC.
 
-**Bootstrap defers until stable:** NAT + UDR, Cilium, Azure Policy, workload pool, Container Insights, Argo CD.
+**Bootstrap defers until stable:** user-assigned NAT, Cilium, Azure Policy, workload pool, Container Insights, Argo CD.
 
 **Does not create:** Argo CD, Container Insights addon, GitHub runner, NAT Gateway (until stable phase 3).
 
@@ -64,7 +64,7 @@ bash scripts/stable-phase-apply.sh apply 1     # workload pool (~15–30 min)
 # verify nodes, then apply 2, 3, 4, 5 in order
 ```
 
-Order: **1** workload pool → **2** Azure Policy → **3** NAT/UDR → **4** Cilium → **5** monitoring addon.
+Order: **1** workload pool → **2** Azure Policy → **3** userAssignedNATGateway → **4** Cilium → **5** monitoring addon.
 
 Phase files: `infra/terraform/envs/dev/stable/phase*.tfvars`
 

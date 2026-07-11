@@ -39,9 +39,9 @@ AKS_STATE=$(az aks show -g "$RG" -n "$AKS" --query provisioningState -o tsv 2>/d
 AKS_ID=$(az aks show -g "$RG" -n "$AKS" --query id -o tsv 2>/dev/null || true)
 
 # AKS gone from Azure but still in state (e.g. failed outbound replace) — drop state so apply recreates
-if [[ "$AKS_STATE" == "Missing" ]] && terraform state list 2>/dev/null | grep -q '^module\.aks\.'; then
-  log "AKS missing in Azure but present in Terraform state — clearing module.aks from state..."
-  terraform state list 2>/dev/null | grep '^module\.aks\.' | while read -r r; do
+if [[ "$AKS_STATE" == "Missing" ]] && terraform state list 2>/dev/null | grep -qE '^module\.(aks|argocd)\.'; then
+  log "AKS missing in Azure — clearing module.aks / module.argocd from state..."
+  terraform state list 2>/dev/null | grep -E '^module\.(aks|argocd)\.' | while read -r r; do
     terraform state rm "$r"
   done || true
   AKS_ID=""
@@ -54,7 +54,7 @@ if [[ "$AKS_STATE" == "Failed" ]]; then
     az aks show -g "$RG" -n "$AKS" >/dev/null 2>&1 || break
     sleep 30
   done
-  terraform state list 2>/dev/null | grep '^module\.aks\.' | while read -r r; do
+  terraform state list 2>/dev/null | grep -E '^module\.(aks|argocd)\.' | while read -r r; do
     terraform state rm "$r"
   done || true
   AKS_ID=""

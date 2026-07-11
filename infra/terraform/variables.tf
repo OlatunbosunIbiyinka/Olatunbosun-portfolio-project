@@ -437,9 +437,9 @@ variable "enable_nat_gateway" {
 variable "aks_outbound_type" {
   description = <<-EOT
     AKS node egress type (preferred over enable_nat_gateway):
-      loadBalancer          — bootstrap / simplest (default)
-      managedNATGateway     — AKS-managed NAT (predictable egress, no UDR)
-      userAssignedNATGateway — your NAT on aks-subnet (no UDR)
+      loadBalancer           — bootstrap / simplest (default)
+      userAssignedNATGateway — BYO NAT on aks-subnet, no UDR (required for custom/BYO VNet)
+      managedNATGateway      — AKS-managed NAT only (NOT allowed with custom VNet)
     Do not use userDefinedRouting.
   EOT
   type        = string

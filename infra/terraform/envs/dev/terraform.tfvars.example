@@ -130,9 +130,9 @@ tags = {
 # Phase 2 — Azure Policy
 # enable_azure_policy = true
 #
-# Phase 3 — AKS-native NAT egress (no UDR)
-# aks_outbound_type = "managedNATGateway"
-# # or: aks_outbound_type = "userAssignedNATGateway"
+# Phase 3 — AKS-native NAT egress (no UDR; required for custom VNet)
+# aks_outbound_type = "userAssignedNATGateway"
+# # managedNATGateway is invalid with BYO VNet (ManagedNATGatewayWithCustomVNetNotAllowed)
 # Phase 4 — Cilium (may recycle nodes; run during maintenance window)
 # network_policy    = "cilium"
 # network_dataplane = "cilium"

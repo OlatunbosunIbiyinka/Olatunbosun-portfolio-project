@@ -62,7 +62,7 @@ terraform init -upgrade
 if [[ "$ACTION" == "plan" ]]; then
   terraform plan "${VAR_ARGS[@]}"
 else
-  log "Use tmux for phases 3–4 (managedNATGateway/Cilium can take 30–90+ min)"
+  log "Use tmux for phases 3–4 (userAssignedNATGateway/Cilium can take 30–90+ min)"
   terraform apply "${VAR_ARGS[@]}" -auto-approve
   log "Verify:"
   log "  kubectl get nodes"

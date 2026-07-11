@@ -57,7 +57,7 @@ acr_public_network_access        = false
 enable_private_dns               = true
 enable_nsg                       = true
 enable_nat_gateway               = false
-aks_outbound_type                = "managedNATGateway"
+aks_outbound_type                = "userAssignedNATGateway"
 
 enable_bastion  = true
 jumpbox_vm_name = "aks-operations-vm-staging"

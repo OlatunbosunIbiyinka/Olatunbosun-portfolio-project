@@ -91,6 +91,20 @@ fi
 
 APPLY_COMMON=(-var-file="$VAR_FILE" -var="enable_argocd=false" -var="enable_aks_monitoring_addon=false")
 
+# Bootstrap never manages Argo — drop any leftover state so apply does not hit 127.0.0.1
+purge_argocd_state() {
+  local resources
+  resources=$(terraform state list 2>/dev/null | grep '^module\.argocd\.' || true)
+  if [[ -n "$resources" ]]; then
+    log "Purging module.argocd from state (enable_argocd=false)..."
+    while IFS= read -r r; do
+      [[ -n "$r" ]] || continue
+      terraform state rm "$r" || true
+    done <<<"$resources"
+  fi
+}
+purge_argocd_state
+
 if [[ -z "$AKS_ID" ]]; then
   log "Creating AKS (bootstrap: no NAT/UDR, azure network policy, ~1–4h)..."
   terraform apply "${APPLY_COMMON[@]}" \
@@ -102,9 +116,16 @@ if [[ -z "$AKS_ID" ]]; then
   AKS_ID=$(normalize_azure_rid "$(az aks show -g "$RG" -n "$AKS" --query id -o tsv)")
 fi
 
+purge_argocd_state
 log "Finishing stack (VM AKS RBAC, remaining resources)..."
 log "AKS_ID=$AKS_ID"
-terraform apply "${APPLY_COMMON[@]}" -var="jumpbox_aks_cluster_id=${AKS_ID}" -auto-approve
+terraform apply "${APPLY_COMMON[@]}" -var="jumpbox_aks_cluster_id=${AKS_ID}" -refresh=false -auto-approve
+# One more normal apply if refresh=false skipped needed updates (optional safety)
+terraform apply "${APPLY_COMMON[@]}" -var="jumpbox_aks_cluster_id=${AKS_ID}" -auto-approve || {
+  log "Retry after purge (Argo state may have been refreshed)..."
+  purge_argocd_state
+  terraform apply "${APPLY_COMMON[@]}" -var="jumpbox_aks_cluster_id=${AKS_ID}" -refresh=false -auto-approve
+}
 
 log "Bootstrap AKS done."
 log "Verify: az aks show -g $RG -n $AKS --query provisioningState -o tsv"

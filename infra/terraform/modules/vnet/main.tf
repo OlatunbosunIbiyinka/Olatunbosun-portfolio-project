@@ -208,57 +208,34 @@ resource "azurerm_nat_gateway_public_ip_association" "nat_gateway" {
   public_ip_address_id = azurerm_public_ip.nat_gateway[0].id
 }
 
-# Route Table for AKS subnet (required for userDefinedRouting)
-# Enterprise-grade: Required when using NAT Gateway with userDefinedRouting outbound type
-# CRITICAL: Route table must allow VNet and Azure services traffic for private AKS clusters
-# NAT Gateway handles internet traffic, but VNet and Azure services use Azure's default routing
+# Legacy UDR route table — only for outbound_type=userDefinedRouting (avoid; prefer AKS-native NAT).
+# userAssignedNATGateway associates NAT to the subnet without a custom default route.
 resource "azurerm_route_table" "aks_subnet" {
-  count               = var.enable_nat_gateway ? 1 : 0
+  count               = var.enable_udr_route_table ? 1 : 0
   name                = "${var.aks_subnet_name}-route-table"
   location            = var.location
   resource_group_name = var.resource_group_name
 
-  # Route for VNet traffic (allows AKS nodes to communicate within VNet)
-  # This ensures internal VNet traffic uses Azure's default routing, not NAT Gateway
   route {
     name           = "VNetLocal"
-    address_prefix = var.address_space[0] # VNet address space (e.g., 10.0.0.0/16)
+    address_prefix = var.address_space[0]
     next_hop_type  = "VnetLocal"
   }
-
-  # CRITICAL: For private AKS clusters with NAT Gateway, Azure services traffic
-  # (AKS API server private endpoint, Azure management APIs) must use Azure's default routing.
-  # Traffic that doesn't match any route uses Azure's default routing automatically.
-  # NAT Gateway only handles internet-bound traffic (mcr.microsoft.com, packages.microsoft.com, etc.)
-  #
-  # Note: We don't add an explicit route for Azure services because:
-  # 1. Azure services use private IPs that don't match VNet or internet routes
-  # 2. Unmatched traffic automatically uses Azure's default routing
-  # 3. This allows AKS nodes to reach the API server private endpoint and Azure APIs
 
   tags = var.tags
 }
 
-# Associate Route Table with AKS subnet
-# Required for userDefinedRouting outbound type
-# This must be done BEFORE NAT Gateway association to avoid conflicts
 resource "azurerm_subnet_route_table_association" "aks_subnet" {
-  count          = var.enable_nat_gateway ? 1 : 0
+  count          = var.enable_udr_route_table ? 1 : 0
   subnet_id      = azurerm_subnet.aks_subnet.id
   route_table_id = azurerm_route_table.aks_subnet[0].id
 
-  # Ensure route table is associated before NAT Gateway
   depends_on = [azurerm_route_table.aks_subnet]
 }
 
-# Associate NAT Gateway with AKS subnet
-# This enables all outbound traffic from AKS nodes to use the NAT Gateway
-# Must be done AFTER route table association
+# Associate NAT Gateway with AKS subnet (userAssignedNATGateway — no UDR required)
 resource "azurerm_subnet_nat_gateway_association" "aks_subnet" {
   count          = var.enable_nat_gateway ? 1 : 0
   subnet_id      = azurerm_subnet.aks_subnet.id
   nat_gateway_id = azurerm_nat_gateway.nat_gateway[0].id
-
-  # Ensure route table is associated first
-  depends_on = [azurerm_subnet_route_table_association.aks_subnet]
 }

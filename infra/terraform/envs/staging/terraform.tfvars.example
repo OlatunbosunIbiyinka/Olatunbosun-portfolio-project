@@ -56,7 +56,8 @@ enable_keyvault_private_endpoint = true
 acr_public_network_access        = false
 enable_private_dns               = true
 enable_nsg                       = true
-enable_nat_gateway               = true
+enable_nat_gateway               = false
+aks_outbound_type                = "managedNATGateway"
 
 enable_bastion  = true
 jumpbox_vm_name = "aks-operations-vm-staging"

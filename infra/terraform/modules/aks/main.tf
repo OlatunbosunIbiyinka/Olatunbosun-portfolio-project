@@ -31,6 +31,15 @@ resource "azurerm_kubernetes_cluster" "aks" {
     service_cidr        = var.service_cidr
     dns_service_ip      = var.dns_service_ip
     pod_cidr            = var.pod_cidr # Required for overlay mode
+
+    # AKS-managed NAT (outbound_type = managedNATGateway) — no UDR / BYO NAT required
+    dynamic "nat_gateway_profile" {
+      for_each = var.outbound_type == "managedNATGateway" ? [1] : []
+      content {
+        idle_timeout_in_minutes   = var.nat_gateway_idle_timeout_in_minutes
+        managed_outbound_ip_count = var.managed_nat_gateway_outbound_ip_count
+      }
+    }
   }
 
   # Default node pool (dedicated system pool)

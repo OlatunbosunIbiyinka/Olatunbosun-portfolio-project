@@ -86,9 +86,15 @@ variable "enable_nsg" {
 }
 
 variable "enable_nat_gateway" {
-  description = "Enable NAT Gateway for predictable egress IPs. Enterprise-grade: Recommended for production."
+  description = "Create a user-assigned NAT Gateway and associate it to the AKS subnet (for aks_outbound_type=userAssignedNATGateway)."
   type        = bool
-  default     = true
+  default     = false
+}
+
+variable "enable_udr_route_table" {
+  description = "Associate a custom route table for userDefinedRouting. Prefer managedNATGateway or userAssignedNATGateway instead."
+  type        = bool
+  default     = false
 }
 
 variable "nat_gateway_zones" {

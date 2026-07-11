@@ -6,7 +6,7 @@
 #   bash scripts/stable-phase-apply.sh apply 2   # cumulative: phases 1+2
 #
 # Phases already live from bootstrap/phase2 (skip): Argo CD, monitoring if enabled.
-# Order: 1 workload pool → 2 policy → 3 NAT → 4 Cilium → 5 monitoring addon
+# Order: 1 workload pool → 2 policy → 3 AKS-native NAT → 4 Cilium → 5 monitoring addon
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -62,7 +62,7 @@ terraform init -upgrade
 if [[ "$ACTION" == "plan" ]]; then
   terraform plan "${VAR_ARGS[@]}"
 else
-  log "Use tmux for phases 3–4 (NAT/Cilium can take 30–90+ min)"
+  log "Use tmux for phases 3–4 (managedNATGateway/Cilium can take 30–90+ min)"
   terraform apply "${VAR_ARGS[@]}" -auto-approve
   log "Verify:"
   log "  kubectl get nodes"

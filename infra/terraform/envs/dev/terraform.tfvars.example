@@ -26,8 +26,9 @@ system_pool_taints                = [] # Re-add CriticalAddonsOnly after workloa
 
 workload_node_pools = {} # Add workload pool in stable phase 1
 
-# --- Networking (bootstrap: loadBalancer egress, azure policy — NO NAT/UDR/Cilium) ---
-enable_nat_gateway  = false # true → userDefinedRouting via NAT (defer until stable phase 3)
+# --- Networking (bootstrap: loadBalancer egress, azure policy — NO NAT/Cilium) ---
+enable_nat_gateway  = false # legacy; prefer aks_outbound_type in stable phase 3
+aks_outbound_type   = "loadBalancer"
 network_policy      = "azure"
 network_dataplane   = "azure"
 network_plugin_mode = "overlay"
@@ -129,9 +130,9 @@ tags = {
 # Phase 2 — Azure Policy
 # enable_azure_policy = true
 #
-# Phase 3 — NAT Gateway + UDR egress (predictable outbound IP)
-# enable_nat_gateway = true
-#
+# Phase 3 — AKS-native NAT egress (no UDR)
+# aks_outbound_type = "managedNATGateway"
+# # or: aks_outbound_type = "userAssignedNATGateway"
 # Phase 4 — Cilium (may recycle nodes; run during maintenance window)
 # network_policy    = "cilium"
 # network_dataplane = "cilium"

@@ -54,6 +54,11 @@ output "nat_gateway_public_ip_id" {
 }
 
 output "aks_subnet_route_table_association_id" {
-  description = "ID of the route table association for AKS subnet. Used to ensure route table is associated before AKS cluster creation."
-  value       = var.enable_nat_gateway ? azurerm_subnet_route_table_association.aks_subnet[0].id : null
+  description = "ID of the UDR route table association (legacy userDefinedRouting only)."
+  value       = var.enable_udr_route_table ? azurerm_subnet_route_table_association.aks_subnet[0].id : null
+}
+
+output "aks_subnet_nat_gateway_association_id" {
+  description = "ID of the NAT Gateway ↔ AKS subnet association (userAssignedNATGateway)."
+  value       = var.enable_nat_gateway ? azurerm_subnet_nat_gateway_association.aks_subnet[0].id : null
 }

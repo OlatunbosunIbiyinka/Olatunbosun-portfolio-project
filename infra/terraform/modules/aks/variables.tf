@@ -89,9 +89,31 @@ variable "load_balancer_sku" {
 }
 
 variable "outbound_type" {
-  description = "Outbound type: 'loadBalancer' (default) or 'userDefinedRouting' (for NAT Gateway). Enterprise-grade: Use 'userDefinedRouting' with NAT Gateway for predictable egress IPs."
+  description = "AKS outbound: loadBalancer | managedNATGateway | userAssignedNATGateway. Avoid userDefinedRouting (UDR hacks)."
   type        = string
-  default     = "userDefinedRouting" # Enterprise-grade: Use NAT Gateway for predictable egress IPs
+  default     = "loadBalancer"
+
+  validation {
+    condition = contains([
+      "loadBalancer",
+      "managedNATGateway",
+      "userAssignedNATGateway",
+      "userDefinedRouting"
+    ], var.outbound_type)
+    error_message = "outbound_type must be loadBalancer, managedNATGateway, userAssignedNATGateway, or userDefinedRouting."
+  }
+}
+
+variable "nat_gateway_idle_timeout_in_minutes" {
+  description = "Idle timeout for managedNATGateway profile"
+  type        = number
+  default     = 4
+}
+
+variable "managed_nat_gateway_outbound_ip_count" {
+  description = "Number of managed outbound IPs when outbound_type=managedNATGateway"
+  type        = number
+  default     = 1
 }
 
 variable "service_cidr" {

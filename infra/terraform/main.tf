@@ -85,6 +85,17 @@ resource "azurerm_resource_group" "rg" {
   tags = var.tags
 }
 
+locals {
+  # Prefer aks_outbound_type; legacy enable_nat_gateway maps to userAssignedNATGateway (no UDR).
+  aks_outbound_type = coalesce(
+    var.aks_outbound_type,
+    var.enable_nat_gateway ? "userAssignedNATGateway" : "loadBalancer"
+  )
+  create_user_assigned_nat = local.aks_outbound_type == "userAssignedNATGateway"
+  # Never enable classic UDR for AKS-native outbound types
+  enable_udr_route_table = false
+}
+
 # Virtual Network for enterprise-grade network isolation
 module "vnet" {
   source = "./modules/vnet"
@@ -103,7 +114,8 @@ module "vnet" {
   jumpbox_subnet_address_prefixes          = var.jumpbox_subnet_address_prefixes
   enable_private_dns                       = var.enable_private_dns
   enable_nsg                               = var.enable_nsg
-  enable_nat_gateway                       = var.enable_nat_gateway
+  enable_nat_gateway                       = local.create_user_assigned_nat
+  enable_udr_route_table                   = local.enable_udr_route_table
   nat_gateway_zones                        = var.nat_gateway_zones
   tags                                     = var.tags
 }
@@ -167,17 +179,15 @@ module "aks" {
   acr_id              = module.acr.acr_id
   vnet_subnet_id      = module.vnet.aks_subnet_id # Attach AKS to VNet subnet
 
-  # CRITICAL: Ensure route table is associated with subnet BEFORE AKS cluster creation
-  # Required when using userDefinedRouting with NAT Gateway
-  # This prevents "ExistingRouteTableNotAssociatedWithSubnet" error
+  # Wait for subnet NAT association when using userAssignedNATGateway
   depends_on = [
-    module.vnet.aks_subnet_route_table_association_id, # Wait for route table association
+    module.vnet.aks_subnet_nat_gateway_association_id,
   ]
-  # Outbound configuration:
-  # - When NAT Gateway is enabled (enterprise-grade): use userDefinedRouting for predictable egress IPs
-  # - When NAT Gateway is disabled (dev simplification): fall back to loadBalancer for simpler, more resilient outbound during bootstrap
-  outbound_type               = var.enable_nat_gateway ? "userDefinedRouting" : "loadBalancer"
-  kubernetes_version          = var.kubernetes_version
+  # Outbound: loadBalancer | managedNATGateway | userAssignedNATGateway (no UDR)
+  outbound_type                           = local.aks_outbound_type
+  managed_nat_gateway_outbound_ip_count   = var.managed_nat_gateway_outbound_ip_count
+  nat_gateway_idle_timeout_in_minutes     = var.nat_gateway_idle_timeout_in_minutes
+  kubernetes_version                      = var.kubernetes_version
   enable_log_analytics        = var.enable_log_analytics
   enable_aks_monitoring_addon = var.enable_aks_monitoring_addon
   log_analytics_workspace_id  = var.enable_log_analytics ? azurerm_log_analytics_workspace.monitoring[0].id : null

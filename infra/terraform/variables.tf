@@ -429,13 +429,46 @@ variable "enable_nsg" {
 }
 
 variable "enable_nat_gateway" {
-  description = "Enable NAT Gateway for predictable egress IPs. Enterprise-grade: Recommended for production."
+  description = "Deprecated switch: if aks_outbound_type is null, true → userAssignedNATGateway (BYO NAT, no UDR). Prefer aks_outbound_type."
   type        = bool
-  default     = true
+  default     = false
+}
+
+variable "aks_outbound_type" {
+  description = <<-EOT
+    AKS node egress type (preferred over enable_nat_gateway):
+      loadBalancer          — bootstrap / simplest (default)
+      managedNATGateway     — AKS-managed NAT (predictable egress, no UDR)
+      userAssignedNATGateway — your NAT on aks-subnet (no UDR)
+    Do not use userDefinedRouting.
+  EOT
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.aks_outbound_type == null || contains([
+      "loadBalancer",
+      "managedNATGateway",
+      "userAssignedNATGateway"
+    ], var.aks_outbound_type)
+    error_message = "aks_outbound_type must be null, loadBalancer, managedNATGateway, or userAssignedNATGateway."
+  }
+}
+
+variable "managed_nat_gateway_outbound_ip_count" {
+  description = "Managed outbound IP count when aks_outbound_type=managedNATGateway"
+  type        = number
+  default     = 1
+}
+
+variable "nat_gateway_idle_timeout_in_minutes" {
+  description = "NAT idle timeout (minutes) for managedNATGateway"
+  type        = number
+  default     = 4
 }
 
 variable "nat_gateway_zones" {
-  description = "Availability zones for NAT Gateway (empty list = zone-redundant, recommended for high availability)"
+  description = "Availability zones for user-assigned NAT Gateway (empty = zone-redundant)"
   type        = list(string)
   default     = []
 }

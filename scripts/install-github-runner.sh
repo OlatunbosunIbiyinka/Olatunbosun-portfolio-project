@@ -24,7 +24,7 @@ GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.com/OlatunbosunIbiyinka/Olatu
 RUNNER_USER="${RUNNER_USER:-$(whoami)}"
 RUNNER_NAME="${RUNNER_NAME:-aks-operations-vm}"
 RUNNER_LABELS="${RUNNER_LABELS:-self-hosted,linux,vnet,aks-ops}"
-RUNNER_VERSION="${RUNNER_VERSION:-v2.323.0}"
+RUNNER_VERSION="${RUNNER_VERSION:-v2.329.0}"
 RUNNER_DIR="${RUNNER_DIR:-/home/${RUNNER_USER}/actions-runner}"
 
 log() { printf '[github-runner] %s\n' "$*"; }

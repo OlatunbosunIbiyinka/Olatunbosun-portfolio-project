@@ -20,6 +20,20 @@ A production-pattern **React portfolio** designed for **private Azure Kubernetes
 
 Screenshots and docs show the full platform. To bring Azure back: follow [docs/QUICK_START.md](docs/QUICK_START.md). Static hosting: [docs/STATIC_SITE.md](docs/STATIC_SITE.md).
 
+### Platform in action
+
+![Portfolio site hero](docs/images/portfolio-site-hero.png)
+
+*Live portfolio UI — Platform / DevOps positioning with in-app assistant.*
+
+![Ops VM — ready nodes, Argo CD and cert-manager](docs/images/platform-ops-vm-kubectl.png)
+
+*Trusted Execution Zone: Bastion → ops VM → `kubectl` against private AKS (system + workload Ready; Argo CD + cert-manager running).*
+
+![Argo CD — portfolio-app Healthy and Synced](docs/images/argocd-portfolio-app.png)
+
+*GitOps: `portfolio-app` Healthy / Synced from `main` (auto-sync); Ingress, Certificate, HPA, PDB, NetworkPolicy, and pods.*
+
 ---
 
 ## What this project is

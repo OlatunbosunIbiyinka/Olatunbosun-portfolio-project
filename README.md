@@ -245,7 +245,7 @@ Stable hardening (ops VM, one phase at a time): `bash scripts/stable-phase-apply
 
 ## License
 
-MIT License — see repository license settings / add a `LICENSE` file if redistributing.
+[MIT](LICENSE) © 2026 Olatunbosun Ibiyinka
 
 ---
 
